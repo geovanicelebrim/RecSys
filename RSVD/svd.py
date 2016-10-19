@@ -1,219 +1,93 @@
-#-*- coding: utf-8 -*-
+#-*-coding:utf-8-*-
+import numpy as np
+from sklearn import cross_validation as cv
+import matplotlib.pyplot as plt
 
-import math
-import random
-import time
+n_users = len(open('./ml-100k/u.user', 'r').readlines())
+n_items = len(open('./ml-100k/u.item', 'r').readlines())
 
-"""
-Rating
-Classe que representa a nota de um usuário para um item.
-"""
-class Rating:
-    def __init__(self, userid, movieid, rating):
-        self.uid = userid-1 
-        self.mid = movieid-1
-        self.rat = rating
+lines_train = open('./ml-100k/treino.txt').readlines()
+lines_test = open('./ml-100k/teste.txt').readlines()
 
-class SvdMatrix:
-    """
-    trainfile -> nome do arquivo para treino
-    nusers -> número de usuários no conjunto de dados
-    nmovies -> número de filmes no conjunto de dados
-    r -> aproximação (para U e V)
-    lrate -> taxa de aprendizagem
-    regularizer -> Regularizador
-    typefile -> 0 se, por menor conjunto de dados MovieLens
-                1 se a médio ou MovieLens maiores conjunto de dados
-    TALVEZ, TAAAAAALVEZ O r (FDP) seja o número de "vizinhos" do elemento.
-        Slide: "Podemos pegar as k primeiras colunas e obter uma matriz aproximada."
-    """
-    def __init__(self, trainfile, nusers, nmovies, r=30, lrate=0.035, regularizer=0.01, typefile=0):
-        self.trainrats = []
-        self.testrats = []
-        
-        self.nusers = nusers
-        self.nmovies = nmovies
+train_data = [ list(map(int, l.split())) for l in lines_train ]
 
-        if typefile == 0:
-            self.readtrainsmaller(trainfile)
-        elif typefile == 1:
-            self.readtrainlarger(trainfile)
+test_data = [ list(map(int, l.split())) for l in lines_test ]
 
-        # get average rating
-        avg = self.averagerating()
-        # set initial values in U, V using square root
-        # of average/rank
-        initval = math.sqrt(avg/r)
-        
-        # U matrix
-        self.U = [[initval]*r for i in range(nusers)]
-        # V matrix -- easier to store and compute than V^T
-        self.V = [[initval]*r for i in range(nmovies)]
+# Cria as matrizes de treino e teste
+R = np.zeros((n_users, n_items))
 
-        self.r = r
-        self.lrate = lrate
-        self.regularizer = regularizer
-        self.minimprov = 0.001
-        self.maxepochs = 30            
+for line in train_data:
+	R[line[0]-1, line[1]-1] = line[2]  
 
-    """
-    Retorna o produto escalar de v1 e v2
-    """
-    def dotproduct(self, v1, v2):
-        return sum([v1[i]*v2[i] for i in range(len(v1))])
+T = np.zeros((n_users, n_items))
+for line in test_data:
+	T[line[0]-1, line[1]-1] = line[2]
+	
+# Indices validos da matriz de treino
+I = R.copy()
+I[I > 0] = 1
+I[I == 0] = 0
 
-    """
-    Retorna o rating estimado correspondente ao filme (movieid) visto por um usuário (userid)
-    O valor está contido no intervalo [1,5]
-    """
-    def calcrating(self, uid, mid):
-        p = self.dotproduct(self.U[uid], self.V[mid])
-        if p > 5:
-            p = 5
-        elif p < 1:
-            p = 1
-        return p
+# Indices validos da matriz de teste
+I2 = T.copy()
+I2[I2 > 0] = 1
+I2[I2 == 0] = 0
 
-    """
-    Retorna a média dos ratings do dataset
-    """
-    def averagerating(self):
-        avg = 0
-        n = 0
-        for i in range(len(self.trainrats)):
-            avg += self.trainrats[i].rat
-            n += 1
-        return float(avg/n)
+# Preve o item baseado no produto escalar
+def prediction(P,Q):
+	return np.dot(P.T,Q)
 
-    """
-    Prevê o rating estimado para o usuário com id i para o filme com id j
-    """
-    def predict(self, i, j):
-        return self.calcrating(i, j)
+lmbda = 0.1 # Taxa de regularização
+k = 20  # Dimensão de características
+m, n = R.shape  # Número de usuários e itens
+n_epochs = 100  # Número de épocas
+gamma = 0.01  # Taxa de aprendizado (max 0.5)
 
-    """
-    Trains the kth column in U and the kth row in
-    V^T
-    See docs for more details.
-    """
-    def train(self, k):
-        sse = 0.0
-        n = 0
-        for i in range(len(self.trainrats)):
-            # get current rating
-            crating = self.trainrats[i]
-            err = crating.rat - self.predict(crating.uid, crating.mid)
-            sse += err**2
-            n += 1
+P = np.random.rand(k,m) # Matriz de variáveis latentes do usuário
+Q = np.random.rand(k,n) # Matriz de variáveis latentes do item
 
-            uTemp = self.U[crating.uid][k]
-            vTemp = self.V[crating.mid][k]
+# Calcula o RMSE
+def rmse(I,R,Q,P):
+	return np.sqrt(np.sum((I * (R - prediction(P,Q)))**2)/len(R[R > 0]))
 
-            self.U[crating.uid][k] += self.lrate * (err*vTemp - self.regularizer*uTemp)
-            self.V[crating.mid][k] += self.lrate * (err*uTemp - self.regularizer*vTemp)
-        return math.sqrt(sse/n)
+# Calcula o MAE
+def mae(I,R,Q,P):
+	return np.sum(abs(I * (R - prediction(P,Q))))/len((R[R>0]))
 
-    """
-    Trains the entire U matrix and the entire V (and V^T) matrix
-    """
-    def trainratings(self):        
-        # stub -- initial train error
-        oldtrainerr = 1000000.0
-       
-        for k in range(self.r):
-            print("k=", k)
-            for epoch in range(self.maxepochs):
-                trainerr = self.train(k)
-                
-                # check if train error is still changing
-                if abs(oldtrainerr-trainerr) < self.minimprov:
-                    break
-                oldtrainerr = trainerr
-                print("epoch=", epoch, "; trainerr=", trainerr)
-                
-    """
-    Calcula o erro MAE
-    """
-    def calcmae(self, arr):
-        mae = 0.0
-        
-        for i in range(len(arr)):
-            crating = arr[i]
-            mae += abs(crating.rat - self.calcrating(crating.uid, crating.mid))
-            
-        return mae / len(arr)
-    
-    """
-    Calculates the RMSE using between arr
-    and the estimated values in (U * V^T)
-    """
-    def calcrmse(self, arr):
-        nusers = self.nusers
-        nmovies = self.nmovies
-        sse = 0.0
-        # total = 0
-        for i in range(len(arr)):
-            crating = arr[i]
-            errorTemp = (crating.rat - self.calcrating(crating.uid, crating.mid))#**2
-            if abs(errorTemp) < 1:
-                print ("User ID: ", crating.uid, "Movie ID:", crating.mid, "Predictor", 
-                    self.calcrating(crating.uid, crating.mid),"Rating: ", crating.rat)
-                
-            sse += errorTemp**2
-            # sse += (crating.rat - self.calcrating(crating.uid, crating.mid))**2
-            # total += 1
-        # return math.sqrt(sse/total)
-        return math.sqrt(sse/len(arr))
+train_errors_rmse = []
+train_errors_mae = []
+test_errors_rmse = []
+test_errors_mae = []
 
-    """
-    Read in the ratings from fname and put in arr
-    Use splitter as delimiter in fname
-    """
-    def readinratings(self, fname, arr, splitter="\t"):
-        f = open(fname)
+users,items = R.nonzero()
+output = open("./svd_erros_teste.csv", 'w')
+output.write("epoch,rmse,mae\n")
+for epoch in range(n_epochs):
+	print("\rProgresso: ", ((epoch+1)*100)//n_epochs, "%", end="")
+	for u, i in zip(users,items):
+		e = R[u, i] - prediction(P[:,u],Q[:,i])  # Calcula o erro do gradiente
+		P[:,u] += gamma * ( e * Q[:,i] - lmbda * P[:,u]) # Atualiza a matriz de características do usuário
+		Q[:,i] += gamma * ( e * P[:,u] - lmbda * Q[:,i])  # Atualiza a matriz de características do item
+	# train_rmse = rmse(I,R,Q,P)
+	# train_mae = mae(I,R,Q,P)
+	test_rmse = rmse(I2,T,Q,P)
+	test_mae = mae(I2,T,Q,P)
+	output.write("{},{},{}\n".format(epoch,test_rmse,test_mae))
+	# train_errors_rmse.append(train_rmse)
+	# train_errors_mae.append(train_mae)
+	test_errors_rmse.append(test_rmse)
+	test_errors_mae.append(test_mae)
+output.close()
+print("")
 
-        for line in f:
-            newline = [int(each) for each in line.split(splitter)]
-            userid, movieid, rating = newline[0], newline[1], newline[2]
-            arr.append(Rating(userid, movieid, rating))
-
-        arr = sorted(arr, key=lambda rating: (rating.uid, rating.mid))
-        return len(arr)
-        
-    """
-    Read in the smaller train dataset
-    """
-    def readtrainsmaller(self, fname):
-        return self.readinratings(fname, self.trainrats, splitter="\t")
-        
-    """
-    Read in the large train dataset
-    """
-    def readtrainlarger(self, fname):
-        return self.readinratings(fname, self.trainrats, splitter="::")
-        
-    """
-    Read in the smaller test dataset
-    """
-    def readtestsmaller(self, fname):
-        return self.readinratings(fname, self.testrats, splitter="\t")
-                
-    """
-    Read in the larger test dataset
-    """
-    def readtestlarger(self, fname):
-        return self.readinratings(fname, self.testrats, splitter="::")
-
-
-if __name__ == "__main__":
-    #========= test SvdMatrix class on smallest MovieLENS dataset =========
-    init = time.time()
-    svd = SvdMatrix("ua.base", 943, 1682, r=50, lrate=0.001, regularizer=0.02)
-    # svd = SvdMatrix("ua.base", 943, 1682)
-    svd.trainratings()
-    # print("rmsetrain: ", svd.calcrmse(svd.trainrats))
-    print("rmaetrain: ", svd.calcmae(svd.trainrats))
-    svd.readtestsmaller("ua.test")
-    # print("rmsetest: ", svd.calcrmse(svd.testrats))
-    print("rmaetest: ", svd.calcmae(svd.testrats))
-    print("time: ", time.time()-init)
+# plt.plot(range(n_epochs), train_errors_rmse, marker='o', label='Training Data - RMSE');
+# plt.plot(range(n_epochs), train_errors_mae, marker='o', label='Training Data - MAE');
+# plt.plot(range(n_epochs), test_errors_rmse, marker='v', label='Test Data - RMSE');
+# plt.plot(range(n_epochs), test_errors_mae, marker='v', label='Test Data - MAE');
+# plt.title('RSVD Learning Curve')
+# plt.xlabel('Number of Epochs');
+# # plt.ylabel('RMSE');
+# plt.ylabel('Error');
+# plt.legend()
+# plt.grid()
+# plt.show()
