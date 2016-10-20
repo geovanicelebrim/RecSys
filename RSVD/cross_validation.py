@@ -15,7 +15,7 @@ a uma porcentagem dada como parâmetro.
 @return teste Dados do conjunto de teste
 
 """
-def treino_teste_split(arquivo, porcentagem_treino=.8):
+def treino_teste_split(arquivo='./ml-100k/u.data', porcentagem_treino=.8):
 
 	dados = open(arquivo, 'r', encoding="utf-8").readlines()
 
