@@ -138,7 +138,7 @@ collaborative filtering":
 
 lamb = Ideal(0.1) Max(0.15) Min(0.05) Passo(0.001)
 k = Ideal(30) Max(40) Min(10) Passo(5)
-n_epochs = 40-120 (20)
+n_epochs = 40-120 (10)
 lrate = (ideal: 0.01) Max(0.07) Min(0.005) Passo(0.0065)
 "./svd_erros_teste.csv"
 """
@@ -147,49 +147,53 @@ if __name__ == '__main__':
 
 	###########################################################################
 	# Variando o lambda
-	output = open("./tests/test_lambda.csv", "w")
-	output.write("lambda,rmse,mae\n")
+	# output = open("./tests/test_lambda.csv", "w")
+	# output.write("lambda,rmse,mae\n")
 
-	for l in range(0.05, 0.15, 0.001):
-		print("Testando para lambda = ", l)
-		rmse, mae, elapsed = rsvd(I, rating_train, rating_test, lamb=l)
-		output.write("{},{},{}\n".format(l, rmse, mae))
+	# for l in np.arange(0.05, 0.15, 0.01):
+	# 	print("Testando para lambda = ", l)
+	# 	rmse, mae, elapsed = rsvd(I, rating_train, rating_test, lamb=l)
+	# 	output.write("{},{},{}\n".format(l, rmse, mae))
+	# 	output.flush()
 
-	output.close()
+	# output.close()
 
-	###########################################################################
-	# Variando o lrate
-	output = open("./tests/test_lrate.csv", "w")
-	output.write("lrate,rmse,mae\n")
+	# ###########################################################################
+	# # Variando o lrate
+	# output = open("./tests/test_lrate.csv", "w")
+	# output.write("lrate,rmse,mae\n")
 
-	for l in range(0.005, 0.07, 0.0065):
-		print("Testando para lrate = ", l)
-		rmse, mae, elapsed = rsvd(I, rating_train, rating_test, lrate=l)
-		output.write("{},{},{}\n".format(l, rmse, mae))
+	# for l in np.arange(0.005, 0.07, 0.0065):
+	# 	print("Testando para lrate = ", l)
+	# 	rmse, mae, elapsed = rsvd(I, rating_train, rating_test, lrate=l)
+	# 	output.write("{},{},{}\n".format(l, rmse, mae))
+	# 	output.flush()
 
-	output.close()
+	# output.close()
 
-	###########################################################################
-	# Variando o k
-	output = open("./tests/test_k.csv", "w")
-	output.write("k,rmse,mae\n")
+	# ###########################################################################
+	# # Variando o k
+	# output = open("./tests/test_k.csv", "w")
+	# output.write("k,rmse,mae\n")
 
-	for k in range(10, 40, 5):
-		print("Testando para k = ", k)
-		rmse, mae, elapsed = rsvd(I, rating_train, rating_test, k=k)
-		output.write("{},{},{}\n".format(k, rmse, mae))
+	# for k in range(10, 40, 5):
+	# 	print("Testando para k = ", k)
+	# 	rmse, mae, elapsed = rsvd(I, rating_train, rating_test, k=k)
+	# 	output.write("{},{},{}\n".format(k, rmse, mae))
+	# 	output.flush()
 
-	output.close()
+	# output.close()
 
 	###########################################################################
 	# Variando o epoch
 	output = open("./tests/test_epochs.csv", "w")
 	output.write("epoch,rmse,mae\n")
 
-	for epoch in range(10, 40, 5):
+	for epoch in range(40, 121, 10):
 		print("Testando para epoch = ", epoch)
 		rmse, mae, elapsed = rsvd(I, rating_train, rating_test, n_epochs=epoch)
 		output.write("{},{},{}\n".format(epoch, rmse, mae))
+		output.flush()
 
 	output.close()
 
