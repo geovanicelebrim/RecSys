@@ -24,9 +24,7 @@ def crete_dataset():
 
 	n_users = len(open(path_users, 'r').readlines())
 	n_items = len(open(path_items, 'r').readlines())
-	treino_teste_split(path_data)
-	lines_train = open('./ml-100k/treino.txt').readlines()
-	lines_test = open('./ml-100k/teste.txt').readlines()
+	lines_train, lines_test = treino_teste_split(path_data)
 
 	train_data = [ list(map(int, l.split())) for l in lines_train ]
 	test_data = [ list(map(int, l.split())) for l in lines_test ]
@@ -95,13 +93,13 @@ com os dados de teste
 @return test_mae Resultado do MAE da última época
 @return elapsed Tempo gasto para executar o modelo
 """
-def rsvd(I, rating_train, rating_test, lamb=0.1, k=15, n_epochs=30, lrate=0.01):
+def rsvd(I, rating_train, rating_test, filename, lamb=0.1, k=15, n_epochs=30, lrate=0.01):
 	n_users, n_items = rating_train.shape  # Número de usuários e itens
 	P = np.random.rand(k,n_users)
 	Q = np.random.rand(k,n_items)
 	users,items = rating_train.nonzero()
 
-	output = open("./svd_erros_teste.csv", 'w')
+	output = open(filename, 'w')
 	output.write("epoch,rmse,mae\n")
 	start = time.time()
 	for epoch in range(n_epochs):
@@ -112,6 +110,7 @@ def rsvd(I, rating_train, rating_test, lamb=0.1, k=15, n_epochs=30, lrate=0.01):
 			Q[:,i] += lrate * ( e * P[:,u] - lamb * Q[:,i])
 		test_rmse, test_mae = calc_errors(I,rating_test,P,Q)
 		output.write("{},{},{}\n".format(epoch,test_rmse,test_mae))
+		output.flush()
 	output.close()
 	print("")
 	elapsed = time.time() - start
@@ -122,11 +121,13 @@ def rsvd(I, rating_train, rating_test, lamb=0.1, k=15, n_epochs=30, lrate=0.01):
 Sugestão de parâmetros do paper "Improving regularized singular value decomposition for
 collaborative filtering":
 
-lrate = .001
-lamb = .02
-k = 96
+lamb = Ideal(0.1) Max(0.15) Min(0.05) Passo(0.001)
+k = Ideal(30) Max(40) Min(10) Passo(5)
+n_epochs = 40-120 (20)
+lrate = (ideal: 0.01) Max(0.07) Min(0.005) Passo(0.0065)
+"./svd_erros_teste.csv"
 """
 if __name__ == '__main__':
 	I, rating_train, rating_test = crete_dataset()
-	rmse, mae, elapsed = rsvd(I, rating_train, rating_test)
+	rmse, mae, elapsed = rsvd(I, rating_train, rating_test, './svd_erros_teste.csv', lamb=0.05)
 	print("Último RMSE: {:.4f}, Último MAE: {:.4f}, Tempo gasto: {:.4f} sec.".format(rmse, mae, elapsed))
