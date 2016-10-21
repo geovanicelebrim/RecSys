@@ -4,6 +4,15 @@ import os.path
 import time
 from cross_validation import treino_teste_split
 
+
+"""
+Obtém o dataset e, caso não exista um arquivo de treino e outro de
+teste, esses arquivos são criados.
+
+@return I Matriz de valores que é possível prever
+@return rating_train Matriz com o gabarito do treino
+@return rating_test Matriz com o gabarito do teste
+"""
 def crete_dataset():
 	path_users = './ml-100k/u.user'
 	path_items = './ml-100k/u.item'
@@ -22,61 +31,102 @@ def crete_dataset():
 	train_data = [ list(map(int, l.split())) for l in lines_train ]
 	test_data = [ list(map(int, l.split())) for l in lines_test ]
 
-	R = np.zeros((n_users, n_items))
+	rating_train = np.zeros((n_users, n_items))
 	for line in train_data:
-		R[line[0]-1, line[1]-1] = line[2]  
+		rating_train[line[0]-1, line[1]-1] = line[2]  
 
-	T = np.zeros((n_users, n_items))
+	rating_test = np.zeros((n_users, n_items))
 	for line in test_data:
-		T[line[0]-1, line[1]-1] = line[2]
+		rating_test[line[0]-1, line[1]-1] = line[2]
 
-	# Indices validos da matriz de teste
-	I2 = T.copy()
-	I2[I2 > 0] = 1
-	I2[I2 == 0] = 0
+	I = rating_test.copy()
+	I[I > 0] = 1
 
-	return (I2, R, T)
+	return (I, rating_train, rating_test)
 
-# Preve o item baseado no produto escalar
-def prediction(P,Q):
-	return np.dot(P.T,Q)
 
-def calc_erros(I,R,Q,P):
- 	matriz = (I * (R - prediction(P,Q)))
- 	nR = len((R[R>0]))
+"""
+Realiza a predição das notas utilizando o produto escalar
+
+@param P matriz de variáveis latentes do usuário
+@param Q matriz de variáveis latentes do item
+
+@return dot(P.T, Q) produto escalar entre P e Q
+"""
+def prediction(P, Q):
+	return np.dot(P.T, Q)
+
+
+"""
+Realiza o cálculo do erro RMSE e o MAE
+
+@param I Matriz de valores que é possível prever
+@param rating Matriz com o gabarito
+@param P matriz de variáveis latentes do usuário
+@param Q matriz de variáveis latentes do item
+
+@return rmse Cálculo do RMSE para o conjunto de dados
+@return mae Cálculo do MAE para o conjunto de dados
+"""
+def calc_errors(I,rating,P,Q):
+ 	matrix = (I * (rating - prediction(P,Q)))
+ 	n_valid = len((rating[rating>0]))
  	
  	#Calcula RMSE
- 	r = np.sqrt(np.sum(matriz**2)/nR)
+ 	rmse = np.sqrt(np.sum(matrix**2)/n_valid)
  	#Calcula MAE
- 	m = np.sum(abs(matriz))/nR
- 	return (r,m)
-
-I2, R, T = crete_dataset()
-
-lmbda = 0.1 # Taxa de regularização
-k = 15  # Dimensão de características
-m, n = R.shape  # Número de usuários e itens
-n_epochs = 30  # Número de épocas
-gamma = 0.01  # Taxa de aprendizado (max 0.5)
-
-P = np.random.rand(k,m) # Matriz de variáveis latentes do usuário
-Q = np.random.rand(k,n) # Matriz de variáveis latentes do item
+ 	mae = np.sum(abs(matrix))/n_valid
+ 	return (rmse,mae)
 
 
-users,items = R.nonzero()
-output = open("./svd_erros_teste.csv", 'w')
-output.write("epoch,rmse,mae\n")
-start = time.time()
-for epoch in range(n_epochs):
-	print("\rProgresso: ", ((epoch+1)*100)//n_epochs, "%", end="")
-	for u, i in zip(users,items):
-		e = R[u, i] - prediction(P[:,u],Q[:,i])  # Calcula o erro do gradiente
-		P[:,u] += gamma * ( e * Q[:,i] - lmbda * P[:,u]) # Atualiza a matriz de características do usuário
-		Q[:,i] += gamma * ( e * P[:,u] - lmbda * Q[:,i])  # Atualiza a matriz de características do item
-	test_rmse, test_mae = calc_erros(I2,T,Q,P)
-	output.write("{},{},{}\n".format(epoch,test_rmse,test_mae))
-output.close()
-print("")
-end = time.time()
-elapsed = end - start
-print("Tempo: ", elapsed)
+"""
+Ajusta o modelo e mostra, para cada época, os erros obtidos 
+com os dados de teste
+
+@param I Matriz de valores que é possível prever
+@param rating_train Matriz com o gabarito do treino, para ajustar o modelo
+@param rating_test Matriz com o gabarito do teste, para testar o modelo
+@param lamb Taxa de regularização
+@param k Dimensão de características
+@param n_epochs Número de épocas
+@param lrate Taxa de aprendizado
+
+@return test_rmse Resultado do RMSE da última época
+@return test_mae Resultado do MAE da última época
+@return elapsed Tempo gasto para executar o modelo
+"""
+def rsvd(I, rating_train, rating_test, lamb=0.1, k=15, n_epochs=30, lrate=0.01):
+	n_users, n_items = rating_train.shape  # Número de usuários e itens
+	P = np.random.rand(k,n_users)
+	Q = np.random.rand(k,n_items)
+	users,items = rating_train.nonzero()
+
+	output = open("./svd_erros_teste.csv", 'w')
+	output.write("epoch,rmse,mae\n")
+	start = time.time()
+	for epoch in range(n_epochs):
+		print("\rProgresso: ", ((epoch+1)*100)//n_epochs, "%", end="")
+		for u, i in zip(users,items):
+			e = rating_train[u, i] - prediction(P[:,u],Q[:,i])
+			P[:,u] += lrate * ( e * Q[:,i] - lamb * P[:,u])
+			Q[:,i] += lrate * ( e * P[:,u] - lamb * Q[:,i])
+		test_rmse, test_mae = calc_errors(I,rating_test,P,Q)
+		output.write("{},{},{}\n".format(epoch,test_rmse,test_mae))
+	output.close()
+	print("")
+	elapsed = time.time() - start
+	return(test_rmse, test_mae, elapsed)
+
+
+"""
+Sugestão de parâmetros do paper "Improving regularized singular value decomposition for
+collaborative filtering":
+
+lrate = .001
+lamb = .02
+k = 96
+"""
+if __name__ == '__main__':
+	I, rating_train, rating_test = crete_dataset()
+	rmse, mae, elapsed = rsvd(I, rating_train, rating_test)
+	print("Último RMSE: {:.4f}, Último MAE: {:.4f}, Tempo gasto: {:.4f} sec.".format(rmse, mae, elapsed))
