@@ -93,7 +93,7 @@ com os dados de teste
 @return test_mae Resultado do MAE da última época
 @return elapsed Tempo gasto para executar o modelo
 """
-def rsvd(I, rating_train, rating_test, filename='./tests/svd_erros_teste.csv', lamb=0.1, k=15, n_epochs=30, lrate=0.01):
+def rsvd(I, rating_train, rating_test, filename='./tests/svd_erros_teste.csv', lamb=0.1, k=15, max_iteration=30, lrate=0.01, delta=0.0001):
 	n_users, n_items = rating_train.shape  # Número de usuários e itens
 	P = np.random.rand(k,n_users)
 	Q = np.random.rand(k,n_items)
@@ -104,9 +104,16 @@ def rsvd(I, rating_train, rating_test, filename='./tests/svd_erros_teste.csv', l
 
 	# output = open(filename, 'w')
 	# output.write("epoch,rmse,mae\n")
+	old_rmse = float('inf')
+	test_rmse = 999
+	iteration = 0
 	start = time.time()
-	for epoch in range(n_epochs):
-		print("\rProgresso: ", ((epoch+1)*100)//n_epochs, "%", end="")
+	# for epoch in range(n_epochs):
+	while (abs(old_rmse - test_rmse) >= delta) and (iteration < max_iteration):
+		print("\rIteração: {}, Delta: {:.5f}".format(iteration, abs(old_rmse - test_rmse)), end="")
+		old_rmse = test_rmse
+		iteration += 1
+		
 		for u, i in zip(users,items):
 			e = rating_train[u, i] - prediction(P[:,u],Q[:,i])
 			P[:,u] += lrate * ( e * Q[:,i] - lamb * P[:,u])
@@ -144,6 +151,9 @@ lrate = (ideal: 0.01) Max(0.07) Min(0.005) Passo(0.0065)
 """
 if __name__ == '__main__':
 	I, rating_train, rating_test = crete_dataset()
+
+	rmse, mae, elapsed = rsvd(I, rating_train, rating_test, delta=0.0001)
+	print("RMSE: {}, MAE: {}, TEMPO: {}\n".format(rmse, mae, elapsed))
 
 	###########################################################################
 	# Variando o lambda
@@ -186,16 +196,16 @@ if __name__ == '__main__':
 
 	###########################################################################
 	# Variando o epoch
-	output = open("./tests/test_epochs.csv", "w")
-	output.write("epoch,rmse,mae\n")
+	# output = open("./tests/test_epochs.csv", "w")
+	# output.write("epoch,rmse,mae\n")
 
-	for epoch in range(40, 121, 10):
-		print("Testando para epoch = ", epoch)
-		rmse, mae, elapsed = rsvd(I, rating_train, rating_test, n_epochs=epoch)
-		output.write("{},{},{}\n".format(epoch, rmse, mae))
-		output.flush()
+	# for epoch in range(40, 121, 10):
+	# 	print("Testando para epoch = ", epoch)
+	# 	rmse, mae, elapsed = rsvd(I, rating_train, rating_test, n_epochs=epoch)
+	# 	output.write("{},{},{}\n".format(epoch, rmse, mae))
+	# 	output.flush()
 
-	output.close()
+	# output.close()
 
 	###########################################################################
 
