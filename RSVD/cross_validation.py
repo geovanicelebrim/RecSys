@@ -4,74 +4,43 @@ from numpy.random import shuffle
 path = "ml-100k/"
 
 """
-@brief Divide o conjunto de dados em treino e teste
+Divide o conjunto de dados em dois subconjuntos: treino e teste, 
+a uma porcentagem dada como parâmetro.
 
-Dado o conjunto de dados, este é dividido em dois subconjuntos: treino e teste, 
-a uma porcentagem dada como parâmetro. 
-
-@param arquivo Nome do arquivo de entrada
-@param porcentagem_treino Porcentagem do conjunto de treino em relação ao conjunto de dados
-@return treino Dados do conjunto de treino
-@return teste Dados do conjunto de teste
+@param file Caminho do arquivo de entrada
+@param percent Porcentagem do conjunto de treino em relação ao conjunto de dados
+@return train Dados do conjunto de treino
+@return test Dados do conjunto de teste
 
 """
-def treino_teste_split(arquivo='./ml-100k/u.data', porcentagem_treino=.8):
+def split_dataset(file='./ml-100k/u.data', percent=.9):
 
-	dados = open(arquivo, 'r', encoding="utf-8").readlines()
+	data = open(file, 'r', encoding="utf-8").readlines()
 
-	conjunto_de_treino = path + "treino.txt"
-	conjunto_de_teste = path + "teste.txt"
+	train_file = path + "treino.txt"
+	test_file = path + "teste.txt"
 
-	if not os.path.exists(conjunto_de_teste) or not os.path.exists(conjunto_de_teste):
-		tamanho = len(dados)
-		posicao = int(tamanho*porcentagem_treino)
-		shuffle(dados)
-		treino, teste = dados[:posicao], dados[posicao:]
+	if not os.path.exists(test_file) or not os.path.exists(test_file):
+		print("Construindo conjunto de treino e teste.")
+		size = len(data)
+		position = int(size*percent)
+		shuffle(data)
+		train, test = data[:position], data[position:]
 		
-		with open(conjunto_de_treino, 'w') as f:
-			for linha in treino:
+		with open(train_file, 'w') as f:
+			for linha in train:
 				f.write(linha)
 
-		with open(conjunto_de_teste, 'w') as f:
-			for linha in teste:
+		with open(test_file, 'w') as f:
+			for linha in test:
 				f.write(linha)
 	else:
-		treino = open(conjunto_de_treino)
-		teste = open(conjunto_de_teste)
+		print("Carregando conjunto de treino e teste.")
+		train = open(train_file)
+		test = open(test_file)
 
-	return treino, teste
+	return train, test
 
-
-
-"""
-@brief Divide o conjunto de dados em treino e teste usando k-fold
-
-@param
-@return
-
-"""
-def kfold_split():
-	return
-
-"""
-@brief Calcula a média absoluta do erro
-
-Dados o gabarito e predito, calcula a média absoluta dos erros
-
-@param gabarito Gabarito do teste
-@param predito Lista das predições do teste
-@return mae Média absoluta do erro
-
-"""
-def calcular_mae(gabarito, predito):
-	mae = 0
-	t = 0
-	for i in range(len(predito)):
-		if predito[i] > 0:
-			mae += abs(predito[i] - gabarito[i])
-			t = t + 1
-	mae /= t
-	return mae
 
 if __name__ == '__main__':
-	treino_teste_split("./ml-100k/u.data")
+	split_dataset("./ml-100k/u.data")

@@ -2,7 +2,7 @@
 import numpy as np
 import os.path
 import time
-from cross_validation import treino_teste_split
+from cross_validation import split_dataset
 
 
 """
@@ -24,7 +24,7 @@ def crete_dataset():
 
 	n_users = len(open(path_users, 'r').readlines())
 	n_items = len(open(path_items, 'r').readlines())
-	lines_train, lines_test = treino_teste_split(path_data)
+	lines_train, lines_test = split_dataset(path_data)
 
 	train_data = [ list(map(int, l.split())) for l in lines_train ]
 	test_data = [ list(map(int, l.split())) for l in lines_test ]
@@ -93,8 +93,9 @@ com os dados de teste
 @return test_mae Resultado do MAE da última época
 @return elapsed Tempo gasto para executar o modelo
 """
-def rsvd(I, rating_train, rating_test, filename='./tests/svd_erros_teste.csv', lamb=0.1, k=15, max_iteration=30, lrate=0.01, delta=0.0001):
-	n_users, n_items = rating_train.shape  # Número de usuários e itens
+def rsvd(I, rating_train, rating_test, filename='./tests/svd_erros_teste.csv', lamb=0.09, k=10, max_iteration=100, lrate=0.005, delta=0.0001):
+	n_users, n_items = rating_train.shape
+
 	P = np.random.rand(k,n_users)
 	Q = np.random.rand(k,n_items)
 	users,items = rating_train.nonzero()
@@ -102,15 +103,14 @@ def rsvd(I, rating_train, rating_test, filename='./tests/svd_erros_teste.csv', l
 	best_test_rmse = float('inf')
 	best_test_mae = float('inf')
 
-	# output = open(filename, 'w')
-	# output.write("epoch,rmse,mae\n")
 	old_rmse = float('inf')
 	test_rmse = 999
+	test_mae = 999
 	iteration = 0
 	start = time.time()
-	# for epoch in range(n_epochs):
+
 	while (abs(old_rmse - test_rmse) >= delta) and (iteration < max_iteration):
-		print("\rIteração: {}, Delta: {:.5f}".format(iteration, abs(old_rmse - test_rmse)), end="")
+		print("\rIteração: {}, Delta: {:.5f}, RMSE: {:.4f}, MAE: {:.4f}     ".format(iteration, abs(old_rmse - test_rmse), test_rmse, test_mae), end="")
 		old_rmse = test_rmse
 		iteration += 1
 		
@@ -125,92 +125,18 @@ def rsvd(I, rating_train, rating_test, filename='./tests/svd_erros_teste.csv', l
 
 		if test_mae < best_test_mae:
 			best_test_mae = test_mae
-		# output.write("{},{},{}\n".format(epoch,test_rmse,test_mae))
-		# output.flush()
-	# output.close()
+
 	print("")
 	elapsed = time.time() - start
-	# return(test_rmse, test_mae, elapsed)
-	return(best_test_rmse, best_test_mae, elapsed)
-
-
-best_lamb = 0.1
-best_k = 30
-best_n_epochs = 100
-best_lrate = 0.01
+	return(iteration, best_test_rmse, best_test_mae, elapsed)
 
 """
-Sugestão de parâmetros do paper "Improving regularized singular value decomposition for
-collaborative filtering":
-
-lamb = Ideal(0.1) Max(0.15) Min(0.05) Passo(0.001)
-k = Ideal(30) Max(40) Min(10) Passo(5)
-n_epochs = 40-120 (10)
-lrate = (ideal: 0.01) Max(0.07) Min(0.005) Passo(0.0065)
-"./svd_erros_teste.csv"
+Melhores parametros:
+best_lamb = 0.11
+best_k = 10
+best_lrate = 0.0066
 """
 if __name__ == '__main__':
 	I, rating_train, rating_test = crete_dataset()
-
-	# rmse, mae, elapsed = rsvd(I, rating_train, rating_test, delta=0.0001)
-	# print("RMSE: {}, MAE: {}, TEMPO: {}\n".format(rmse, mae, elapsed))
-
-	###########################################################################
-	# Variando o lambda
-	output = open("./tests/test_lambda.csv", "w")
-	output.write("lambda,rmse,mae\n")
-
-	# for l in np.arange(0.05, 0.15, 0.01):
-	for l in np.arange(0.05, 0.16, 0.01):
-		print("Testando para lambda = ", l)
-		rmse, mae, elapsed = rsvd(I, rating_train, rating_test, lamb=l)
-		output.write("{},{},{}\n".format(l, rmse, mae))
-		output.flush()
-
-	output.close()
-
-	###########################################################################
-	# Variando o lrate
-	output = open("./tests/test_lrate.csv", "w")
-	output.write("lrate,rmse,mae\n")
-
-	# for l in np.arange(0.005, 0.07, 0.0065):
-	for l in np.arange(0.005, 0.0764, 0.0065):
-		print("Testando para lrate = ", l)
-		rmse, mae, elapsed = rsvd(I, rating_train, rating_test, lrate=l)
-		output.write("{},{},{}\n".format(l, rmse, mae))
-		output.flush()
-
-	output.close()
-
-	###########################################################################
-	# Variando o k
-	output = open("./tests/test_k.csv", "w")
-	output.write("k,rmse,mae\n")
-
-	# for k in range(10, 40, 5):
-	for k in range(10, 41, 5):
-		print("Testando para k = ", k)
-		rmse, mae, elapsed = rsvd(I, rating_train, rating_test, k=k)
-		output.write("{},{},{}\n".format(k, rmse, mae))
-		output.flush()
-
-	output.close()
-
-	##########################################################################
-	# Variando o epoch
-	output = open("./tests/test_epochs.csv", "w")
-	output.write("epoch,rmse,mae\n")
-
-	for epoch in range(40, 121, 10):
-		print("Testando para epoch = ", epoch)
-		rmse, mae, elapsed = rsvd(I, rating_train, rating_test, n_epochs=epoch)
-		output.write("{},{},{}\n".format(epoch, rmse, mae))
-		output.flush()
-
-	output.close()
-
-	##########################################################################
-
-	# rmse, mae, elapsed = rsvd(I, rating_train, rating_test, './svd_erros_teste.csv')
-	# print("Último RMSE: {:.4f}, Último MAE: {:.4f}, Tempo gasto: {:.4f} sec.".format(rmse, mae, elapsed))
+	rsvd(I, rating_train, rating_test)
+	exit()
