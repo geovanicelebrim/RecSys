@@ -1,4 +1,5 @@
-from numpy import zeros, dot, sum as soma, mean, intersect1d, nonzero, count_nonzero
+from numpy import full, zeros, dot, sum as soma, mean, intersect1d, nonzero, count_nonzero
+from sklearn.metrics.pairwise import cosine_similarity
 
 """
 @brief Calcula média da matriz esparsa
@@ -25,11 +26,31 @@ Dadas as notas do usuário e a média global, calcula a média do usuário propo
 @return Média do usuário
 
 """
-def media_usuario(notas, mu, shrinkage=30):
+def media_usuario(notas, mu, shrinkage=10):
 	ru = count_nonzero(notas)
 	b = sum(notas) / ru
 	dem = shrinkage + ru
 	return (shrinkage/dem)*mu + (ru/dem)*b
+
+"""
+@brief Calcula a similaridade usando cosseno
+
+Dada a matriz usuário-item, calcula a similaridade entre dois usuários usando cosseno.
+A média global é adiciona aos casos em que não há avaliação do usuário para um item. 
+
+@param matriz Matriz usuário-item
+@return Similaridade calculada
+"""
+def cosseno(matriz):
+	mu = media_matriz(matriz)
+	copy = full(matriz.shape, mu) 
+	lines, cols = matriz.nonzero()
+
+	for l, c in zip(lines, cols):
+		copy[l, c] = matriz[l, c]
+
+	return cosine_similarity(copy)
+
 
 """
 @brief Calcula a similaridade entre os usuários usando cosseno
@@ -41,7 +62,7 @@ Dados dois usuários, u e v, o cálculo é feito considerando apenas os itens av
 @return similaridades Matriz de similaridade usuário-usuário
 
 """
-def cosseno(matriz):
+def cosseno_intersecao(matriz):
 	similaridades = zeros((matriz.shape[0], matriz.shape[0]))
 	
 	for u in range(matriz.shape[0]):
@@ -57,51 +78,81 @@ def cosseno(matriz):
 			
 			intersecao = intersect1d(iu, iv) # índices das itens avaliados por u e v
 
-			nu = matriz[u, intersecao].toarray()[0] # notas dos itens avaliados por u e v
-			nv = matriz[v, intersecao].toarray()[0] # notas dos itens avaliados por v e u
+			nu = matriz[u, iu].toarray()[0] # notas de u
+			nv = matriz[v, iv].toarray()[0] # notas de v	
 
-			num = soma(nu * nv)
-			dem = (soma(nu**2) * soma(nv**2))**.5
+			den = (soma(nu**2) * soma(nv**2))**.5 # considera todas as notas de u e todas as notas de v
 
-			if dem > 0.:
-				cos = num/dem
+			if len(intersecao) > 10:
+				nu = matriz[u, intersecao].toarray()[0] # notas dos itens avaliados por u e v
+				nv = matriz[v, intersecao].toarray()[0] # notas dos itens avaliados por v e u
 
-			similaridades[u, v] = cos
-			similaridades[v, u] = cos
+				num = soma(nu * nv)				
+
+				if den > 0.:
+					cos = num/den
+
+				similaridades[u, v] = cos
+				similaridades[v, u] = cos
 	
 	return similaridades
 
-def r_dice(matriz, limiar=1):
+"""
+@brief Calcula a similaridade de Pearson entre os usuários 
+@param matriz Matriz usuário-item
+@return similaridades Matriz de similaridade usuário-usuário
 
+"""
+def pearson(matriz):
 	similaridades = zeros((matriz.shape[0], matriz.shape[0]))
+
+	mg = media_matriz(matriz)
 
 	for u in range(matriz.shape[0]):
 
 		print("\rCalculando similaridades: ", ((u+1)*100)//matriz.shape[0], "%", end="")
-		
+
 		for v in range(u+1):
 
-			rd = 0.
+			pearson = 0.
 
-			iu = nonzero(matriz[u,:])[1] # índices dos itens avaliados pelo usúario u
-			iv = nonzero(matriz[v,:])[1] # índices dos itens avaliados pelo usuário v
-			
-			intersecao = intersect1d(iu, iv) # índices das itens avaliados por u e v
+			iu = nonzero(matriz[u, :])[1] # índice dos itens avaliados por u
+			iv = nonzero(matriz[v, :])[1] # índice dos itens avaliados por v
 
-			nu = matriz[u, intersecao].toarray()[0] # notas dos itens avaliados por u e v
-			nv = matriz[v, intersecao].toarray()[0] # notas dos itens avaliados por v e u
+			nu = matriz[u, :].toarray()[0] # notas de u
+			nv = matriz[v, :].toarray()[0] # notas de v	
 
-			num = len([i for i in range(len(intersecao)) if abs(nu[i] - nv[i]) <= limiar]) 
+			intersecao = intersect1d(iu, iv) # índice dos itens em comum
 
-			if len(intersecao) > 0:
-				rd = num/len(intersecao)
+			if len(intersecao) > 10:
+				nu = nu[intersecao] # notas de u de itens em comum com v
+				nv = nv[intersecao] # notas de v de itens em comum com u
 
-			similaridades[u, v] = rd
-			similaridades[v, u] = rd
+				# mu = soma(nu)/len(nu) # média de u
+				# mv = soma(nv)/len(nv) # média de v
 
+				mu = media_usuario(nu, mg)
+				mv = media_usuario(nv, mg)
+
+				num = soma((nu - mu) * (nv - mv))
+				den = (soma((nu - mu)**2) * soma((nv - mv)**2))**.5
+
+				if den > 0.:
+					pearson = num/den
+
+				similaridades[u, v] = pearson
+				similaridades[v, u] = pearson
+	
 	return similaridades
 
-def c_dice(matriz, limiar=1):
+"""
+@brief Calcula a similaridade SC-Dice entre os usuários 
+@param matriz Matriz usuário-item
+@param limiar Diferença entre notas máxima a ser considerada
+@return similaridades Matriz de similaridade usuário-usuário
+
+"""
+def sc_dice(matriz, limiar=1):
 
 	similaridades = zeros((matriz.shape[0], matriz.shape[0]))
 
@@ -119,99 +170,18 @@ def c_dice(matriz, limiar=1):
 
 			intersecao = intersect1d(iu, iv) # índices das itens avaliados por u e v
 
-			nu = matriz[u, intersecao].toarray()[0] # notas dos itens avaliados por u e v
-			nv = matriz[v, intersecao].toarray()[0] # notas dos itens avaliados por v e u
+			if len(intersecao) > 10:
 
-			num = len([i for i in range(len(intersecao)) if abs(nu[i] - nv[i]) <= limiar])
+				nu = matriz[u, intersecao].toarray()[0] # notas dos itens avaliados por u e v
+				nv = matriz[v, intersecao].toarray()[0] # notas dos itens avaliados por v e u
 
-			if len(intersecao) > 0:
-				cd = (2.0 * num) / (nu.shape[0] + nv.shape[0])
+				num = len([i for i in range(len(intersecao)) if abs(nu[i] - nv[i]) <= limiar])
 
-			similaridades[u, v] = cd
-			similaridades[v, u] = cd
+				if len(intersecao) > 0:
+					cd = (2.0 * num) / (nu.shape[0] + nv.shape[0])
+
+				similaridades[u, v] = cd
+				similaridades[v, u] = cd
 		
 	return similaridades
 
-
-"""
-@brief Calcula a similaridade de Pearson entre os usuários 
-@param matriz Matriz usuário-item
-@return similaridades Matriz de similaridade usuário-usuário
-
-"""
-def pearson(matriz):
-	similaridades = zeros((matriz.shape[0], matriz.shape[0]))
-
-	mg = media_matriz(matriz) # média global
-
-	for u in range(matriz.shape[0]):
-
-		print("\rCalculando similaridades: ", ((u+1)*100)//matriz.shape[0], "%", end="")
-
-		for v in range(u+1):
-
-			pearson = 0.
-
-			iu = nonzero(matriz[u, :])[1] # índice dos itens avaliados por u
-			iv = nonzero(matriz[v, :])[1] # índice dos itens avaliados por v
-
-			nu = matriz[u, :].toarray()[0] # notas de u
-			nv = matriz[v, :].toarray()[0] # notas de v			
-
-			intersecao = intersect1d(iu, iv) # índices da interseção
-
-			if len(intersecao) > 0:
-				nu = nu[intersecao] # notas de u de itens em comum com v
-				nv = nv[intersecao] # notas de v de itens em comum com u
-
-				# mu = soma(nu)/len(nu) # média de u
-				# mv = soma(nv)/len(nv) # média de v
-
-				mu = media_usuario(nu, mg)
-				mv = media_usuario(nv, mg)
-
-				num = soma((nu - mu) * (nv - mv))
-				dem = (soma((nu - mu)**2) * soma((nv - mv)**2))**.5
-
-				if dem > 0.:
-					pearson = num/dem
-
-				similaridades[u, v] = pearson
-				similaridades[v, u] = pearson
-	
-	return similaridades
-
-
-def mean_squared_difference(matriz):
-
-	similaridades = zeros((matriz.shape[0], matriz.shape[0]))
-
-	for u in range(matriz.shape[0]):
-
-		print("\rCalculando similaridades: ", ((u+1)*100)//matriz.shape[0], "%", end="")
-
-		for v in range(u+1):
-
-			msd = 0.
-
-			iu = nonzero(matriz[u, :])[1] # índice dos itens avaliados por u
-			iv = nonzero(matriz[v, :])[1] # índice dos itens avaliados por v
-
-			nu = matriz[u, :].toarray()[0] # notas de u
-			nv = matriz[v, :].toarray()[0] # notas de v
-
-			intersecao = intersect1d(iu, iv) # índices da interseção
-
-			nu = nu[intersecao] # notas de u de itens em comum com v
-			nv = nv[intersecao] # notas de v de itens em comum com u
-
-			num = len(intersecao)
-			dem = soma((nu - nv)**2)
-
-			if dem > 0.:
-				msd = num/dem
-
-			similaridades[u, v] = msd
-			similaridades[v, u] = msd
-
-	return similaridades

@@ -1,8 +1,11 @@
-from cross_validation import treino_teste_split, calcular_mae
-from similarities import cosseno, pearson, mean_squared_difference, c_dice, r_dice
+#-*-coding:utf-8-*-
+
+from cross_validation import treino_teste_split, calcular_mae, calcular_rmse
+from similarities import cosseno, cosseno_intersecao, pearson, sc_dice
 from scipy.sparse import lil_matrix as esparsa
+from numpy import nonzero, argsort, dot, zeros, count_nonzero, std
 from sklearn.metrics.pairwise import cosine_similarity as cosine
-from numpy import nonzero, argsort, dot, zeros
+import sys, os.path
 
 path = "ml-100k/"
 u_user = path + "u.user"
@@ -18,7 +21,6 @@ Dados os conjuntos de dados, gera os dados de treino e teste necessários para o
 @return dados_treino Dados do conjunto de treino
 @return matriz_teste Matriz esparsa (usuário-item) de teste
 @return dados_teste Dados do conjunto de teste
-
 """
 def criar_dataset():
 
@@ -63,54 +65,96 @@ def criar_dataset():
 	return (matriz_treino, dados_treino, matriz_teste, dados_teste)
 
 """
+@brief Escreve os dados da execução do algoritmo
+@param arquivo Arquivo de saída
+@param k Número de vizinhos da execução
+@param mae Média absoluta dos erros
+@param rmse Média quadrática dos erros
+@param predicoes Número de predições executadas
+
+"""
+def escrever_estatisticas(arquivo, k, mae, rmse, predicoes):
+	
+	if not os.path.exists(arquivo):
+		output = open(arquivo, "a")
+		output.write("k, MAE, RMSE, PREDICOES\n")
+		output.close()
+
+	with open(arquivo, "a") as output:
+		output.write("%d, %.4f, %.4f, %.2f\n" %(k, mae, rmse, predicoes))
+
+"""
 @brief Executa o classificador KNN
 
 Realiza a predição das notas segundo o algoritmo KNN.
 A função de similaridade e o número de vizinhos são dados como entrada.
 
 @param func_similaridade Função de similaridade. Default cosine
-@param k Número de vizinhos mais próximos. Default 1
+@param min_k Menor número de vizinhos mais próximos. Default 1
+@param max_k Maior número de vizinhos mais próximos. Default 5
+@param intervalo Taxa de acréscimo do número de vizinhos
+@param arquivo_saida Arquivo de saída contendo os dados da execução do algoritmo
 @return Média absoluta dos erros
 
 """
-def classificar(func_similaridade=cosine, k=1,**parametros):
+def classificar(func_similaridade=cosseno, min_k=1, max_k=5, acrescimo=1, arquivo_saida="saida.txt", **parametros):
+
 	matriz_treino, dados_treino, matriz_teste, dados_teste = criar_dataset() 
 
 	similaridades = func_similaridade(matriz_treino, **parametros)
-
-	predito = zeros(len(dados_teste))
+	
 	gabarito = [dado[2] for dado in dados_teste]
 
 	print("")
 
-	for i in range(len(dados_teste)):
+	for k in range(min_k, max_k+1, acrescimo):
+		
+		print("Calculando para k =", k)
 
-		print("\rCalculando predições: ", ((i+1)*100)//len(dados_teste), "%", end="")
+		predito = zeros(len(dados_teste))
 
-		usuario, item, nota = dados_teste[i][0], dados_teste[i][1], dados_teste[i][2]
-		vizinhos = nonzero(matriz_treino[:, item])[0]
+		for i in range(len(dados_teste)):
 
-		if len(vizinhos) < k+1:
-			pass
-		else:
-			knn 		= vizinhos[argsort(similaridades[usuario, vizinhos])[-(k+1):-1]]
-			knn_sims 	= similaridades[usuario, knn]
-			notas 		= matriz_treino[knn, item].toarray()
+			print("\rCalculando predições: ", ((i+1)*100)//len(dados_teste), "%", end="")
 
-			num = dot(notas.T, knn_sims)
-			dem = sum(abs(knn_sims))
+			usuario, item = dados_teste[i][0], dados_teste[i][1]
+			vizinhos = nonzero(matriz_treino[:, item])[0] 
+			vizinhos = vizinhos[similaridades[usuario, vizinhos]>0.]
 
-			if dem > 0:
-				predito[i] = num/dem 
+			if len(vizinhos) < k+1:
+				pass
+			else:
+				knn 		= vizinhos[argsort(similaridades[usuario, vizinhos])[-(k+1):-1]]
+				knn_sims 	= similaridades[usuario, knn]
+				notas 		= matriz_treino[knn, item].toarray()
 
-	print("\nCalculando média dos erros...")
-	return calcular_mae(gabarito, predito)
+				num = dot(notas.T, knn_sims)
+				den = sum(abs(knn_sims))
 
-def main():
-	# print("MAE %.4f" %classificar(func_similaridade=mean_squared_difference, k=60))
-	# print("MAE %.4f" %classificar(func_similaridade=c_dice, k=60, limiar=1))
-	print("MAE %.4f" %classificar(func_similaridade=r_dice, k=60, limiar=1))
-	# classificar(func_similaridade=cosseno)
+				if den > 0:
+					predito[i] = num/den 
+
+		print("\nCalculando média dos erros...")
+		escrever_estatisticas(arquivo_saida, k, calcular_mae(gabarito, predito), calcular_rmse(gabarito, predito), (count_nonzero(predito)/len(gabarito))*100)
 
 if __name__ == "__main__":
-	main()
+	similaridades = [cosseno_intersecao, pearson, cosseno, sc_dice]
+	saidas = ["cosseno_int.csv", "pearson.csv", "cosseno.csv", "sc_dice.csv"]
+	
+	parametros = [ {}, {}, {}, { 'limiar': 1 } ]
+	
+	# Realiza os testes para todos as métricas de similaridade
+	for i in range(len(similaridades)):
+		
+		print("Calculando para similaridade %s" % (str(similaridades[i])))
+		
+		classificar(func_similaridade=similaridades[i], min_k=10, max_k=100,
+					acrescimo=10, arquivo_saida="tests/"+saidas[i], **parametros[i])
+
+	# Realiza os testes dos limiares para a métrica SC-Dice
+	for i in range(5):
+		
+		print("Calculando para limiar = " , i)
+		
+		classificar(func_similaridade=sc_dice, min_k=60, max_k=60,
+					acrescimo=10, arquivo_saida="tests/scdice_"+str(i)+".csv", limiar=i)

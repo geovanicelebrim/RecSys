@@ -1,5 +1,5 @@
 import os.path
-from numpy.random import shuffle
+from random import shuffle
 
 path = "ml-100k/"
 
@@ -22,10 +22,11 @@ def treino_teste_split(arquivo, porcentagem_treino=.8):
 	conjunto_de_treino = path + "treino.txt"
 	conjunto_de_teste = path + "teste.txt"
 
-	if not os.path.exists(conjunto_de_teste) or not os.path.exists(conjunto_de_teste):
+	if not os.path.exists(conjunto_de_treino) or not os.path.exists(conjunto_de_teste):
 		tamanho = len(dados)
 		posicao = int(tamanho*porcentagem_treino)
-		shuffle(dados)
+		for i in range(10):
+			shuffle(dados)
 		treino, teste = dados[:posicao], dados[posicao:]
 		
 		with open(conjunto_de_treino, 'w') as f:
@@ -66,7 +67,17 @@ def calcular_mae(gabarito, predito):
 	t = 0
 	for i in range(len(predito)):
 		if predito[i] > 0:
-			mae += abs(predito[i] - gabarito[i])
+			mae += abs(gabarito[i] - predito[i])
 			t = t + 1
 	mae /= t
 	return mae
+
+def calcular_rmse(gabarito, predito):
+	rmse = 0
+	t = 0
+	for i in range(len(predito)):
+		if predito[i] > 0:
+			rmse += (gabarito[i] - predito[i])**2
+			t = t + 1
+	rmse = (rmse/t)**.5
+	return rmse
