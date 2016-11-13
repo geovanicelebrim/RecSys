@@ -18,7 +18,7 @@ def main():
 	for similaridade in nomes_similaridades:
 
 		resultados_por_execucao = []
-		nome_arquivo_consolidado = "%s/%s_conslidado.csv" % (pasta, similaridade)
+		nome_arquivo_consolidado = "%s/%s_consolidado.csv" % (pasta, similaridade)
 
 		for i in range(divisoes):
 
@@ -29,6 +29,8 @@ def main():
 				arquivo = open(nome_arquivo, "r")
 
 				resultados_por_execucao.append( list(csv.reader(arquivo, delimiter=','))[1:] )
+
+				arquivo.close()
 
 			else:
 				print("Arquivo não encontrado: ", nome_arquivo)
@@ -61,7 +63,7 @@ def main():
 			PREDICOES = sum(PREDICOESs) / len(PREDICOESs)
 
 
-			arquivo_consolidado.write("%d, %f, %f, %f\n" % (k, MAE, RMSE, PREDICOES) )
+			arquivo_consolidado.write("%d, %.4f, %.4f, %.2f\n" % (k, MAE, RMSE, PREDICOES) )
 
 		arquivo_consolidado.close()
 
