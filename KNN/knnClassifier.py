@@ -1,6 +1,6 @@
 #-*-coding:utf-8-*-
 
-from cross_validation import treino_teste_split, calcular_mae, calcular_rmse
+from cross_validation import treino_teste_split, calcular_mae, calcular_rmse, treino_teste_split2
 from similarities import cosseno, cosseno_intersecao, pearson, sc_dice
 from scipy.sparse import lil_matrix as esparsa
 from numpy import nonzero, argsort, dot, zeros, count_nonzero, std
@@ -137,10 +137,29 @@ def classificar(func_similaridade=cosseno, min_k=1, max_k=5, acrescimo=1, arquiv
 		print("\nCalculando média dos erros...")
 		escrever_estatisticas(arquivo_saida, k, calcular_mae(gabarito, predito), calcular_rmse(gabarito, predito), (count_nonzero(predito)/len(gabarito))*100)
 
+from random import shuffle
+
 if __name__ == "__main__":
 
-	classificar(func_similaridade=sc_dice, min_k=60, max_k=60,
-				acrescimo=10, arquivo_saida="tests/saida.txt", limiar=1)
+	dividir_base(u_data, divisoes = 5)
+
+	# classificar(func_similaridade=sc_dice, min_k=60, max_k=60,
+	# 			acrescimo=10, arquivo_saida="tests/saida.txt", limiar=1)
+
+	# dados = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
+	# divisoes = 5
+
+	# dados_divididos = []
+
+	# tamanho = len(dados)
+	# tamanho_parte = tamanho/ divisoes
+
+	# shuffle(dados)
+
+	# for i in range(divisoes):
+	# 	dados_divididos.append( dados[  int(i*tamanho_parte) : int((i+1)*tamanho_parte)] )
+
+	# print(dados_divididos)
 
 	# #########################################
 	# ############## Testes ###################

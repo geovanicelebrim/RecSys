@@ -4,53 +4,59 @@ from random import shuffle
 path = "ml-100k/"
 
 """
-@brief Divide o conjunto de dados em treino e teste
-
-Dado o conjunto de dados, este é dividido em dois subconjuntos: treino e teste, 
-a uma porcentagem dada como parâmetro. 
+@brief Divide o conjunto de dados em partes de tamanhos iguais
 
 @param arquivo Nome do arquivo de entrada
-@param porcentagem_treino Porcentagem do conjunto de treino em relação ao conjunto de dados
-@return treino Dados do conjunto de treino
-@return teste Dados do conjunto de teste
+@param divisoes Número de divisões do conjunto de dados
+@return dados_divididos Divisões do conjunto de dados
 
 """
-def treino_teste_split(arquivo, porcentagem_treino=.8):
+def dividir_base(arquivo, divisoes=5):
 
 	dados = open(arquivo, 'r', encoding="utf-8").readlines()
 
-	conjunto_de_treino = path + "treino.txt"
-	conjunto_de_teste = path + "teste.txt"
+	tamanho = len(dados)
 
-	if not os.path.exists(conjunto_de_treino) or not os.path.exists(conjunto_de_teste):
-		tamanho = len(dados)
-		posicao = int(tamanho*porcentagem_treino)
-		for i in range(10):
-			shuffle(dados)
-		treino, teste = dados[:posicao], dados[posicao:]
-		
-		with open(conjunto_de_treino, 'w') as f:
-			for linha in treino:
-				f.write(linha)
+	if (tamanho % divisoes) != 0:
+		print("O número de divisões não gera partes de tamanhos iguais!")
+		return None
 
-		with open(conjunto_de_teste, 'w') as f:
-			for linha in teste:
-				f.write(linha)
+	tamanho_parte = tamanho/ divisoes
+
+	nome_base = path + "base_%s.txt"
+
+	dados_divididos = []
+
+	arquivos_existem = True
+
+	for i in range(divisoes):
+
+		nome = nome_base % (i+1,)
+
+		if os.path.exists(nome):
+			f = open(nome_base % (i+1,), 'r')
+
+			arquivos_existem = arquivos_existem and (len(f.readlines()) == tamanho_parte)
+		else:
+			arquivos_existem = False
+
+	if not arquivos_existem:
+
+		shuffle(dados)
+
+		for i in range(divisoes):
+			dados_divididos.append( dados[ int(i*tamanho_parte) :  int((i+1)*tamanho_parte)] )
+
+			with open(nome_base % (i+1,), 'w') as f:
+				for linha in dados_divididos[i]:
+					f.write(linha)
+
 	else:
-		treino = open(conjunto_de_treino)
-		teste = open(conjunto_de_teste)
+		for i in range(divisoes):
+			with open(nome_base % (i+1,), 'r') as f:
+				dados_divididos.append(f.readlines())
 
-	return treino, teste
-
-"""
-@brief Divide o conjunto de dados em treino e teste usando k-fold
-
-@param
-@return
-
-"""
-def kfold_split():
-	return
+	return dados_divididos
 
 """
 @brief Calcula a média absoluta do erro
