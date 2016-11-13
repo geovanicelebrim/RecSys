@@ -21,8 +21,6 @@ def treino_teste_split(arquivo, parte, divisoes):
 	if dados_divididos == None:
 		dados_divididos = dividir_base(arquivo, divisoes)
 
-	# treino = dados_divididos[ : parte ]
-	# treino += dados_divididos[ parte+1: ]
 	treino = [ i for j in dados_divididos[ : parte ] for i in j]
 	treino += [ i for j in dados_divididos[ parte+1: ] for i in j]
 
@@ -112,11 +110,11 @@ A função de similaridade e o número de vizinhos são dados como entrada.
 @param min_k Menor número de vizinhos mais próximos. Default 1
 @param max_k Maior número de vizinhos mais próximos. Default 5
 @param intervalo Taxa de acréscimo do número de vizinhos
-@param arquivo_saida Arquivo de saída contendo os dados da execução do algoritmo (sem a extensão)
+@param saida Arquivo de saída contendo os dados da execução do algoritmo (sem a extensão)
 @return Média absoluta dos erros
 
 """
-def classificar(func_similaridade=cosseno, min_k=1, max_k=5, acrescimo=1, arquivo_saida="saida", divisoes=5, **parametros):
+def classificar(func_similaridade=cosseno, min_k=1, max_k=5, acrescimo=1, saida="saida", divisoes=5, **parametros):
 
 	for i in range(divisoes):
 		matriz_treino, dados_treino, matriz_teste, dados_teste = criar_dataset(i, divisoes)
@@ -157,7 +155,10 @@ def classificar(func_similaridade=cosseno, min_k=1, max_k=5, acrescimo=1, arquiv
 						predito[i] = num/den 
 
 			print("\nCalculando média dos erros...")
-			escrever_estatisticas( (arquivo_saida + "_%d.csv") % (i,), k, calcular_mae(gabarito, predito), calcular_rmse(gabarito, predito), (count_nonzero(predito)/len(gabarito))*100)
+
+			arquivo_saida_completo = ("tests/" + saida + "_%d.csv") % (i,)
+
+			escrever_estatisticas( arquivo_saida_completo, k, calcular_mae(gabarito, predito), calcular_rmse(gabarito, predito), (count_nonzero(predito)/len(gabarito))*100)
 
 from random import shuffle
 
@@ -166,7 +167,7 @@ if __name__ == "__main__":
 	# dividir_base(u_data, divisoes = 5)
 
 	classificar(func_similaridade=sc_dice, min_k=10, max_k=100,
-				acrescimo=10, arquivo_saida="tests/sc_dice", divisoes=5, limiar=1)
+				acrescimo=10, saida="sc_dice", divisoes=5, limiar=1)
 
 
 	# #########################################
