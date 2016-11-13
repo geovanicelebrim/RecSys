@@ -8,9 +8,12 @@ def main():
 
 	global pasta
 	global divisoes
+	
+	# Consolidar os testes das similaridades
+	nomes_similaridades = ["cosseno_int", "pearson", "cosseno", "sc_dice"]
 
-	# nomes_similaridades = ["cosseno_int", "pearson", "cosseno", "sc_dice"]
-	nomes_similaridades = ["sc_dice"]
+	# Consolidar os dados dos testes de limiar do sc_dice
+	# nomes_similaridades = [ "sc_dice_limiar_%d" % (i) for i in range(divisoes) ]
 
 	for similaridade in nomes_similaridades:
 
