@@ -160,8 +160,6 @@ def classificar(func_similaridade=cosseno, min_k=1, max_k=5, acrescimo=1, saida=
 
 			escrever_estatisticas( arquivo_saida_completo, k, calcular_mae(gabarito, predito), calcular_rmse(gabarito, predito), (count_nonzero(predito)/len(gabarito))*100)
 
-from random import shuffle
-
 if __name__ == "__main__":
 
 	# dividir_base(u_data, divisoes = 5)
