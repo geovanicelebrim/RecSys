@@ -138,23 +138,30 @@ def classificar(func_similaridade=cosseno, min_k=1, max_k=5, acrescimo=1, arquiv
 		escrever_estatisticas(arquivo_saida, k, calcular_mae(gabarito, predito), calcular_rmse(gabarito, predito), (count_nonzero(predito)/len(gabarito))*100)
 
 if __name__ == "__main__":
-	similaridades = [cosseno_intersecao, pearson, cosseno, sc_dice]
-	saidas = ["cosseno_int.csv", "pearson.csv", "cosseno.csv", "sc_dice.csv"]
-	
-	parametros = [ {}, {}, {}, { 'limiar': 1 } ]
-	
-	# Realiza os testes para todos as métricas de similaridade
-	for i in range(len(similaridades)):
-		
-		print("Calculando para similaridade %s" % (str(similaridades[i])))
-		
-		classificar(func_similaridade=similaridades[i], min_k=10, max_k=100,
-					acrescimo=10, arquivo_saida="tests/"+saidas[i], **parametros[i])
 
-	# Realiza os testes dos limiares para a métrica SC-Dice
-	for i in range(5):
+	classificar(func_similaridade=sc_dice, min_k=60, max_k=60,
+				acrescimo=10, arquivo_saida="tests/saida.txt", limiar=1)
+
+	# #########################################
+	# ############## Testes ###################
+	# #########################################
+	# similaridades = [cosseno_intersecao, pearson, cosseno, sc_dice]
+	# saidas = ["cosseno_int.csv", "pearson.csv", "cosseno.csv", "sc_dice.csv"]
+	
+	# parametros = [ {}, {}, {}, { 'limiar': 1 } ]
+	
+	# # Realiza os testes para todos as métricas de similaridade
+	# for i in range(len(similaridades)):
 		
-		print("Calculando para limiar = " , i)
+	# 	print("Calculando para similaridade %s" % (str(similaridades[i])))
 		
-		classificar(func_similaridade=sc_dice, min_k=60, max_k=60,
-					acrescimo=10, arquivo_saida="tests/scdice_"+str(i)+".csv", limiar=i)
+	# 	classificar(func_similaridade=similaridades[i], min_k=10, max_k=100,
+	# 				acrescimo=10, arquivo_saida="tests/"+saidas[i], **parametros[i])
+
+	# # Realiza os testes dos limiares para a métrica SC-Dice
+	# for i in range(5):
+		
+	# 	print("Calculando para limiar = " , i)
+		
+	# 	classificar(func_similaridade=sc_dice, min_k=60, max_k=60,
+	# 				acrescimo=10, arquivo_saida="tests/scdice_"+str(i)+".csv", limiar=i)
