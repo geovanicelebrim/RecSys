@@ -1,46 +1,89 @@
 import os.path
-from numpy.random import shuffle
+from random import shuffle
 
 path = "ml-100k/"
 
 """
-Divide o conjunto de dados em dois subconjuntos: treino e teste, 
-a uma porcentagem dada como parâmetro.
+@brief Divide o conjunto de dados em partes de tamanhos iguais
 
-@param file Caminho do arquivo de entrada
-@param percent Porcentagem do conjunto de treino em relação ao conjunto de dados
-@return train Dados do conjunto de treino
-@return test Dados do conjunto de teste
+@param arquivo Nome do arquivo de entrada
+@param divisoes Número de divisões do conjunto de dados
+@return dados_divididos Divisões do conjunto de dados
 
 """
-def split_dataset(file='./ml-100k/u.data', percent=.9):
+def dividir_base(arquivo, divisoes=5):
 
-	data = open(file, 'r', encoding="utf-8").readlines()
+	dados = open(arquivo, 'r', encoding="utf-8").readlines()
 
-	train_file = path + "treino.txt"
-	test_file = path + "teste.txt"
+	tamanho = len(dados)
 
-	if not os.path.exists(test_file) or not os.path.exists(test_file):
-		print("Construindo conjunto de treino e teste.")
-		size = len(data)
-		position = int(size*percent)
-		shuffle(data)
-		train, test = data[:position], data[position:]
-		
-		with open(train_file, 'w') as f:
-			for linha in train:
-				f.write(linha)
+	if (tamanho % divisoes) != 0:
+		print("O número de divisões não gera partes de tamanhos iguais!")
+		return None
 
-		with open(test_file, 'w') as f:
-			for linha in test:
-				f.write(linha)
+	tamanho_parte = tamanho/ divisoes
+
+	nome_base = path + "base_%s.txt"
+
+	dados_divididos = []
+
+	arquivos_existem = True
+
+	for i in range(divisoes):
+
+		nome = nome_base % (i+1,)
+
+		if os.path.exists(nome):
+			f = open(nome_base % (i+1,), 'r')
+
+			arquivos_existem = arquivos_existem and (len(f.readlines()) == tamanho_parte)
+		else:
+			arquivos_existem = False
+
+	if not arquivos_existem:
+
+		shuffle(dados)
+
+		for i in range(divisoes):
+			dados_divididos.append( dados[ int(i*tamanho_parte) :  int((i+1)*tamanho_parte)] )
+
+			with open(nome_base % (i+1,), 'w') as f:
+				for linha in dados_divididos[i]:
+					f.write(linha)
+
 	else:
-		print("Carregando conjunto de treino e teste.")
-		train = open(train_file)
-		test = open(test_file)
+		for i in range(divisoes):
+			with open(nome_base % (i+1,), 'r') as f:
+				dados_divididos.append(f.readlines())
 
-	return train, test
+	return dados_divididos
 
+"""
+@brief Calcula a média absoluta do erro
 
-if __name__ == '__main__':
-	split_dataset("./ml-100k/u.data")
+Dados o gabarito e predito, calcula a média absoluta dos erros
+
+@param gabarito Gabarito do teste
+@param predito Lista das predições do teste
+@return mae Média absoluta do erro
+
+"""
+def calcular_mae(gabarito, predito):
+	mae = 0
+	t = 0
+	for i in range(len(predito)):
+		if predito[i] > 0:
+			mae += abs(gabarito[i] - predito[i])
+			t = t + 1
+	mae /= t
+	return mae
+
+def calcular_rmse(gabarito, predito):
+	rmse = 0
+	t = 0
+	for i in range(len(predito)):
+		if predito[i] > 0:
+			rmse += (gabarito[i] - predito[i])**2
+			t = t + 1
+	rmse = (rmse/t)**.5
+	return rmse
