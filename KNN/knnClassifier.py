@@ -196,6 +196,6 @@ if __name__ == "__main__":
 	# 	print("Calculando para limiar = " , i)
 		
 	# 	classificar(func_similaridade=sc_dice, min_k=60, max_k=60,
-	# 				acrescimo=10, arquivo_saida="tests/scdice_"+str(i)+".csv", limiar=i)
+	# 				acrescimo=10, saida="sc_dice_limiar_"+str(i), divisoes=5, limiar=i)
 
 
