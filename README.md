@@ -1,6 +1,6 @@
-# Implementação e análise de desempenho dos algoritmos KNN e RSVD
+# Implementação e análise de desempenho dos algoritmos kNN e RSVD
 
-Este trabalho tem como objetivo implementar os algoritmos de filtragem colaborativa KNN e RSVD, e submetê-los à testes de parâmetros, buscando encontrar qual é a melhor configuração de parâmetros para a base de dados do MovieLens disponível neste [link](http://grouplens.org/datasets/movielens/100k/).
+Este trabalho tem como objetivo implementar os algoritmos de filtragem colaborativa kNN e RSVD, e submetê-los a testes de parâmetros, buscando encontrar qual é a melhor configuração de parâmetros para a base de dados do MovieLens disponível neste [link](http://grouplens.org/datasets/movielens/100k/).
 
 Os códigos utilizados bem como os resultados estão disponíveis no repositório. Os artigos disponibilizados abaixo, detalham mais sobre o trabalho realizado.
 
