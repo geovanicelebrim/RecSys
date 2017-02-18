@@ -115,16 +115,17 @@ def rsvd(I, rating_train, rating_test, filename='./tests/test_progress.csv', lam
 
 	P = np.random.rand(k,n_users)
 	Q = np.random.rand(k,n_items)
+	# P,Q = load_model()
 	users,items = rating_train.nonzero()
 
 	best_test_rmse = float('inf')
 	best_test_mae = float('inf')
 
-	if delta == 0.0:
-		I2 = rating_train.copy()
-		I2[I2 > 0] = 1
-		output = open(filename, "w")
-		output.write("iteration,rmse_train,rmse_test,mae_train,mae_test\n")
+	# if delta == 0.0:
+	# I2 = rating_train.copy()
+	# I2[I2 > 0] = 1
+	# output = open(filename, "w")
+	# output.write("iteration,rmse_train,rmse_test,mae_train,mae_test\n")
 
 	old_rmse = float('inf')
 	test_rmse = 999
@@ -142,24 +143,104 @@ def rsvd(I, rating_train, rating_test, filename='./tests/test_progress.csv', lam
 			P[:,u] += lrate * ( e * Q[:,i] - lamb * P[:,u])
 			Q[:,i] += lrate * ( e * P[:,u] - lamb * Q[:,i])
 		test_rmse, test_mae = calc_errors(I,rating_test,P,Q)
-		if delta == 0.0:
-			train_rmse, train_mae = calc_errors(I2,rating_train,P,Q)
+		# train_rmse, train_mae = calc_errors(I2,rating_train,P,Q)
 
-		if test_rmse < best_test_rmse:
-			best_test_rmse = test_rmse
 
-		if test_mae < best_test_mae:
-			best_test_mae = test_mae
-
-		if delta == 0.0:
-			output.write("{},{},{},{},{}\n".format(iteration, train_rmse, test_rmse, train_mae, test_mae))
-			output.flush()
-	if delta == 0.0:
-		output.close()
-
+	# write_model(P, Q)
 	print("")
+	# print(train_mae, train_rmse)
+	
 	elapsed = time.time() - start
 	return(iteration, best_test_rmse, best_test_mae, elapsed)
+
+def write_model(P, Q):
+	file = open("model_Q", "w")
+
+	for line in range(Q.shape[0]):
+		for collum in range(Q.shape[1]):
+			if collum + 1 == Q.shape[1]:
+				file.write(str(Q[line,collum]))
+			else:
+				file.write(str(Q[line,collum]) + "\t")
+		file.write("\n")
+	
+	file.close()
+
+	file = open("model_P", "w")
+
+	for line in range(P.shape[0]):
+		for collum in range(P.shape[1]):
+			if collum + 1 == P.shape[1]:
+				file.write(str(P[line,collum]))
+			else:
+				file.write(str(P[line,collum]) + "\t")
+		file.write("\n")
+	
+	file.close()
+	pass
+
+def load_model():
+	file = open("model_Q", "r")
+	lines = file.readlines()
+	Q = np.zeros((len(lines), len(lines[0].split("\t"))))
+	file.close()
+
+	for l in range(Q.shape[0]):
+		for c in range(Q.shape[1]):
+			Q[l,c] = float(lines[l].split("\t")[c])
+
+	file = open("model_P", "r")
+	lines = file.readlines()
+	P = np.zeros((len(lines), len(lines[0].split("\t"))))
+	file.close()
+
+	for l in range(P.shape[0]):
+		for c in range(P.shape[1]):
+			P[l,c] = float(lines[l].split("\t")[c])
+
+	return (P,Q)
+
+def noise_rsvd(I, rating_train):
+
+	n_users, n_items = rating_train.shape
+
+	P,Q = load_model()
+	users,items = rating_train.nonzero()
+	best_test_rmse = float('inf')
+	best_test_mae = float('inf')
+
+	###### CALCULA OS ERROS #######
+	I2 = rating_train.copy()
+	I2[I2 > 0] = 1
+
+	rating = rating_train
+	new_rating = np.zeros(rating.shape)
+	pred = prediction(P,Q)
+
+	noise = 0
+	valid = 0
+
+	for l in range(rating.shape[0]):
+		for c in range(rating.shape[1]):
+			if rating[l,c] != 0.0:
+				valid += 1
+				new_rating[l,c] = rating[l,c]
+				if abs(rating[l,c] - pred[l,c]) > 2:
+					noise += 1
+					new_rating[l,c] = pred[l,c]
+
+	print("Valid: ", valid)
+	print("Noise: ", noise)
+	n_valid = len((rating[rating>0]))
+	
+	matrix = (I2 * (rating - prediction(P,Q)))
+	#Calcula RMSE
+	rmse = np.sqrt(np.sum(matrix**2)/n_valid)
+	#Calcula MAE
+	mae = np.sum(abs(matrix))/n_valid
+
+	print(mae, rmse)
+	return new_rating
 
 """
 Melhores parametros:
@@ -169,72 +250,14 @@ lrate = 0.0066
 """
 if __name__ == '__main__':
 
-	I, rating_train, rating_test = crete_dataset(i, divisoes)
-	rsvd(I, rating_train, rating_test, filename='./tests/saida.txt')
+	I, rating_train, rating_test = crete_dataset(0, 5)
+	# print("Resultado SVD sem tirar ruido:")
+	# rsvd(I, rating_train, rating_test)
+	print("------------------------------")
+	print("Operações para remover ruido:")
+	new_rating = noise_rsvd(I, rating_train)
 
-	# ##################################################
-	# ##################### TESTES #####################
-	# ##################################################
-	# divisoes = 5
-
-	# for i in range(divisoes):
-
-	# 	print("Calculando para a parte", i)
-
-	# 	I, rating_train, rating_test = crete_dataset(i, divisoes)
-
-	# 	#######################    TESTE DE PROGRESSO   ###########################
-		
-	# 	print("Teste do progresso")
-	# 	rsvd(I, rating_train, rating_test, filename='./tests/test_progress_%d.csv' % (i,), delta=0.0)
-
-	# 	###########################################################################
-
-
-	# 	###########################################################################
-	# 	# Variando o lambda
-	# 	print("Teste do lambda")
-
-	# 	output = open("./tests/test_lambda_%d.csv" % (i,), "w")
-	# 	output.write("iteration,lambda,rmse,mae\n")
-
-	# 	# for l in np.arange(0.05, 0.15, 0.01):
-	# 	for l in np.arange(0.05, 0.16, 0.01):
-	# 		print("Testando para lambda = ", l)
-	# 		iteration, rmse, mae, elapsed = rsvd(I, rating_train, rating_test, lamb=l)
-	# 		output.write("%d, %f, %.4f, %.4f\n" % (iteration, l, rmse, mae))
-	# 		output.flush()
-
-	# 	output.close()
-
-	# 	###########################################################################
-	# 	# Variando o lrate
-	# 	print("Teste do lrate")
-
-	# 	output = open("./tests/test_lrate_%d.csv" % (i,), "w")
-	# 	output.write("iteration,lrate,rmse,mae\n")
-
-	# 	# for l in np.arange(0.005, 0.07, 0.0065):
-	# 	for l in np.arange(0.005, 0.0764, 0.0065):
-	# 		print("Testando para lrate = ", l)
-	# 		iteration, rmse, mae, elapsed = rsvd(I, rating_train, rating_test, lrate=l)
-	# 		output.write("%d, %f, %.4f, %.4f\n" % (iteration, l, rmse, mae))
-	# 		output.flush()
-
-	# 	output.close()
-
-	# 	###########################################################################
-	# 	# Variando o k
-	# 	print("Teste do k")
-
-	# 	output = open("./tests/test_k_%d.csv" % (i,), "w")
-	# 	output.write("iteration,k,rmse,mae\n")
-
-	# 	# for k in range(10, 40, 5):
-	# 	for k in range(10, 41, 5):
-	# 		print("Testando para k = ", k)
-	# 		iteration, rmse, mae, elapsed = rsvd(I, rating_train, rating_test, k=k)
-	# 		output.write("%d, %d, %.4f, %.4f\n" % (iteration, k, rmse, mae))
-	# 		output.flush()
-
-	# 	output.close()
+	noise_rsvd(I, new_rating)
+	print("------------------------------")
+	print("Resultado SVD após tirar ruido:")
+	rsvd(I, new_rating, rating_test)
