@@ -233,6 +233,111 @@ def load_model():
 	return (P,Q)
 
 
+def classify_possible_noise(rating_train):
+	user_classes = [ -1 for i in range(rating_train.shape[0]) ]
+	item_classes = [ -1 for i in range(rating_train.shape[1]) ]
+	# user_classes = [ -1 for i in range(rating_train.shape[0]) ]
+
+	count_c = 0
+	count_a = 0
+	count_b = 0
+	count_v = len(user_classes)
+
+	for u in range(rating_train.shape[0]):
+
+		nz = rating_train[u].nonzero()[0]
+
+		# ratings do usuário
+		ratings = [ rating_train[u, i] for i in nz]
+
+		# mean = sum(ratings)/len(ratings)
+		mean = np.mean(ratings)
+		# mean = np.average(ratings)
+		std = np.std(ratings)
+
+		k = mean - std
+		v = mean + std
+
+		w = len([ rating_train[u, i] for i in nz if rating_train[u, i] < k ])
+		a = len([ rating_train[u, i] for i in nz if k <= rating_train[u, i] and rating_train[u, i] < v ])
+		s = len([ rating_train[u, i] for i in nz if rating_train[u, i] >= v ])
+
+		if w >= (a + s):
+			user_classes[u] = 0
+			count_c += 1
+			count_v -= 1
+
+			# print(u, user_classes[u])
+		elif a >= (w + s):
+			user_classes[u] = 1
+
+			count_a += 1
+			count_v -= 1
+
+		elif s >= (w + a):
+			user_classes[u] = 2
+
+			count_b += 1
+			count_v -= 1
+		# else:
+		# 	print(w, a, s)
+		pass
+
+	print(count_c, count_a, count_b, count_v)
+
+	count_c = 0
+	count_a = 0
+	count_b = 0
+	count_v = len(item_classes)
+
+	for i in range(rating_train.shape[1]):
+
+		nz = rating_train[:,i].nonzero()[0]
+
+		# ratings do usuário
+		ratings = [ rating_train[u, i] for u in nz]
+
+		mean = np.mean(ratings) if (len(ratings) > 0) else 0
+		# mean = np.average(ratings) if (len(ratings) > 0) else 0
+		std = np.std(ratings) if (len(ratings) > 0) else 0
+
+		k = mean - std
+		v = mean + std
+
+		w = len([ rating_train[u, i] for u in nz if rating_train[u, i] < k ])
+		a = len([ rating_train[u, i] for u in nz if k <= rating_train[u, i] and rating_train[u, i] < v ])
+		s = len([ rating_train[u, i] for u in nz if rating_train[u, i] >= v ])
+
+		if w >= (a + s) and mean > 0:
+			item_classes[i] = 0
+			count_c += 1
+			count_v -= 1
+
+			# print(u, item_classes[u])
+		elif a >= (w + s) and mean > 0:
+			item_classes[i] = 1
+
+			count_a += 1
+			count_v -= 1
+
+		elif s >= (w + a) and mean > 0:
+			item_classes[i] = 2
+
+			count_b += 1
+			count_v -= 1
+		# else:
+		# 	print(w, a, s)
+		pass
+
+	print(count_c, count_a, count_b, count_v)
+
+	# print(count_c, count_a, count_b, count_v)
+	# for u in range(len(user_classes)):
+	# for u in range(50):
+	# 	print(u, user_classes[u])
+	# print(count_c, count_a, count_b, count_v)
+
+
 """
 Uma vez realizada a predição normalmente usando apenas o RSVD e escrevendo
 no arquivo o modelo de predição obtido, esta função utiliza o modelo
@@ -428,6 +533,8 @@ def generate_noise(rating_train, nNoise):
 if __name__ == '__main__':
 
 	I, rating_train, rating_test = create_dataset(0, 5)
+
+	classify_possible_noise(rating_train)
 
 	########## TESTANDO IDENTIFICAÇÃO DE RUÍDO ##########
 	# noise_detection(rating_train)						#
