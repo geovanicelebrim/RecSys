@@ -377,7 +377,7 @@ def classify_possible_noise(rating_train, user_based_threshold=True):
 	# print(count_c, count_a, count_b, count_v)
 	# print(count_pn)
 
-	return (possible_noise, threshold)
+	return (possible_noise, threshold, count_pn)
 
 """
 Uma vez realizada a predição normalmente usando apenas o RSVD e escrevendo
@@ -597,16 +597,22 @@ if __name__ == '__main__':
 
 	I, rating_train, rating_test = create_dataset(0, 5)
 
-	possible_noise, threshold = classify_possible_noise(rating_train)
+	index_noise, new_train = generate_noise(rating_train, 285)
+
+	# possible_noise, threshold = classify_possible_noise(rating_train)
+	possible_noise, threshold, count_pn = classify_possible_noise(new_train)
+	print("Possíveis ruídos:", count_pn)			#
+
 
 	########## TESTANDO IDENTIFICAÇÃO DE RUÍDO ##########
 	# noise_detection(rating_train)						#
 	#####################################################
 	
 	########### TESTANDO RSVD SEM TIRAR RUÍDO ###########
-	# print("Resultado SVD sem tirar ruido:")			#
+	print("Resultado SVD sem tirar ruido:")			#
 	# rsvd(I, rating_train, rating_test)				#
-	# print("------------------------------")			#
+	rsvd(I, new_train, rating_test)				#
+	print("------------------------------")			#
 	#####################################################
 
 	############# TESTANDO REMOÇÃO DE RUÍDO #############
@@ -617,7 +623,8 @@ if __name__ == '__main__':
 
 	############# TESTANDO REMOÇÃO DE RUÍDO #############
 	print("Operações para remover ruido:")			#
-	new_rating = noise_rsvd(rating_train, possible_noise=possible_noise, threshold_vec=threshold)				#
+	# new_rating = noise_rsvd(rating_train, possible_noise=possible_noise, threshold_vec=threshold)				#
+	new_rating = noise_rsvd(new_train, possible_noise=possible_noise, threshold_vec=threshold)				#
 	print("------------------------------")			#
 	#####################################################
 
