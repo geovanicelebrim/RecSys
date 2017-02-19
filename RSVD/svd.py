@@ -233,15 +233,25 @@ def load_model():
 	return (P,Q)
 
 
-def classify_possible_noise(rating_train):
+def classify_possible_noise(rating_train, user_based_threshold=True):
 	user_classes = [ -1 for i in range(rating_train.shape[0]) ]
 	item_classes = [ -1 for i in range(rating_train.shape[1]) ]
+
+	kv = None
+
+	if user_based_threshold:
+		kv = [ (0, 0) for i in range(rating_train.shape[0]) ]
+	else:
+		kv = [ (0, 0) for i in range(rating_train.shape[1]) ]
+	# item_kv = [ (0, 0) for i in range(rating_train.shape[1]) ]
 	# user_classes = [ -1 for i in range(rating_train.shape[0]) ]
 
-	count_c = 0
-	count_a = 0
-	count_b = 0
-	count_v = len(user_classes)
+	possible_noise = np.ones((rating_train.shape[0], rating_train.shape[1]), dtype=bool)
+
+	# count_c = 0
+	# count_a = 0
+	# count_b = 0
+	# count_v = len(user_classes)
 
 	for u in range(rating_train.shape[0]):
 
@@ -262,33 +272,34 @@ def classify_possible_noise(rating_train):
 		a = len([ rating_train[u, i] for i in nz if k <= rating_train[u, i] and rating_train[u, i] < v ])
 		s = len([ rating_train[u, i] for i in nz if rating_train[u, i] >= v ])
 
+		if user_based_threshold:
+			kv[u] = (k, v)
+
 		if w >= (a + s):
 			user_classes[u] = 0
-			count_c += 1
-			count_v -= 1
+			# count_c += 1
+			# count_v -= 1
 
 			# print(u, user_classes[u])
 		elif a >= (w + s):
 			user_classes[u] = 1
 
-			count_a += 1
-			count_v -= 1
+			# count_a += 1
+			# count_v -= 1
 
 		elif s >= (w + a):
 			user_classes[u] = 2
 
-			count_b += 1
-			count_v -= 1
-		# else:
-		# 	print(w, a, s)
+			# count_b += 1
+			# count_v -= 1
 		pass
 
-	print(count_c, count_a, count_b, count_v)
+	# print(count_c, count_a, count_b, count_v)
 
-	count_c = 0
-	count_a = 0
-	count_b = 0
-	count_v = len(item_classes)
+	# count_c = 0
+	# count_a = 0
+	# count_b = 0
+	# count_v = len(item_classes)
 
 	for i in range(rating_train.shape[1]):
 
@@ -308,35 +319,64 @@ def classify_possible_noise(rating_train):
 		a = len([ rating_train[u, i] for u in nz if k <= rating_train[u, i] and rating_train[u, i] < v ])
 		s = len([ rating_train[u, i] for u in nz if rating_train[u, i] >= v ])
 
+		if not user_based_threshold:
+			kv[i] = (k, v)
+
 		if w >= (a + s) and mean > 0:
 			item_classes[i] = 0
-			count_c += 1
-			count_v -= 1
+			# count_c += 1
+			# count_v -= 1
 
-			# print(u, item_classes[u])
 		elif a >= (w + s) and mean > 0:
 			item_classes[i] = 1
 
-			count_a += 1
-			count_v -= 1
+			# count_a += 1
+			# count_v -= 1
 
 		elif s >= (w + a) and mean > 0:
 			item_classes[i] = 2
 
-			count_b += 1
-			count_v -= 1
-		# else:
-		# 	print(w, a, s)
+			# count_b += 1
+			# count_v -= 1
 		pass
 
-	print(count_c, count_a, count_b, count_v)
+	count_pn = 0
+	count_u = 0
+	count_i = 0
 
-	# print(count_c, count_a, count_b, count_v)
-	# for u in range(len(user_classes)):
-	# for u in range(50):
-	# 	print(u, user_classes[u])
-	# print(count_c, count_a, count_b, count_v)
+	for u in range(rating_train.shape[0]):
+		for i in range(rating_train.shape[1]):
 
+			if rating_train[u, i] > 0:
+
+				k, v = 0, 0
+
+				if user_based_threshold:
+					k, v = kv[u]
+				else:
+					k, v = kv[i]
+
+				if user_classes[u] == 0 and item_classes[i] == 0 and rating_train[u, i] >= k:
+					possible_noise[u, i] = True
+
+					count_pn += 1
+				elif user_classes[u] == 1 and item_classes[i] == 1 and (rating_train[u, i] < k or rating_train[u, i] >= v):
+					possible_noise[u, i] = True
+
+					count_pn += 1
+				elif user_classes[u] == 2 and item_classes[i] == 2 and rating_train[u, i] < v:
+					possible_noise[u, i] = True
+
+					count_pn += 1
+				pass
+
+			pass
+
+		pass
+	# print(count_c, count_a, count_b, count_v)
+	# print(count_pn)
+
+	return possible_noise
 
 """
 Uma vez realizada a predição normalmente usando apenas o RSVD e escrevendo
