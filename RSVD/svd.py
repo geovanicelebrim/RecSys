@@ -238,13 +238,14 @@ def classify_possible_noise(rating_train, user_based_threshold=True):
 	item_classes = [ -1 for i in range(rating_train.shape[1]) ]
 
 	kv = None
+	threshold = None
 
 	if user_based_threshold:
-		kv = [ (0, 0) for i in range(rating_train.shape[0]) ]
+		kv = [ [0, 0] for i in range(rating_train.shape[0]) ]
+		threshold = [ 0 for i in range(rating_train.shape[0]) ]
 	else:
-		kv = [ (0, 0) for i in range(rating_train.shape[1]) ]
-	# item_kv = [ (0, 0) for i in range(rating_train.shape[1]) ]
-	# user_classes = [ -1 for i in range(rating_train.shape[0]) ]
+		kv = [ [0, 0] for i in range(rating_train.shape[1]) ]
+		threshold = [ 0 for i in range(rating_train.shape[1]) ]
 
 	possible_noise = np.ones((rating_train.shape[0], rating_train.shape[1]), dtype=bool)
 
@@ -273,7 +274,8 @@ def classify_possible_noise(rating_train, user_based_threshold=True):
 		s = len([ rating_train[u, i] for i in nz if rating_train[u, i] >= v ])
 
 		if user_based_threshold:
-			kv[u] = (k, v)
+			kv[u] = [k, v]
+			threshold[u] = std
 
 		if w >= (a + s):
 			user_classes[u] = 0
@@ -320,7 +322,8 @@ def classify_possible_noise(rating_train, user_based_threshold=True):
 		s = len([ rating_train[u, i] for u in nz if rating_train[u, i] >= v ])
 
 		if not user_based_threshold:
-			kv[i] = (k, v)
+			kv[i] = [k, v]
+			threshold[i] = std
 
 		if w >= (a + s) and mean > 0:
 			item_classes[i] = 0
@@ -341,9 +344,7 @@ def classify_possible_noise(rating_train, user_based_threshold=True):
 		pass
 
 	count_pn = 0
-	count_u = 0
-	count_i = 0
-
+	
 	for u in range(rating_train.shape[0]):
 		for i in range(rating_train.shape[1]):
 
@@ -376,7 +377,7 @@ def classify_possible_noise(rating_train, user_based_threshold=True):
 	# print(count_c, count_a, count_b, count_v)
 	# print(count_pn)
 
-	return possible_noise
+	return (possible_noise, threshold)
 
 """
 Uma vez realizada a predição normalmente usando apenas o RSVD e escrevendo
@@ -391,7 +392,7 @@ da predição.
 
 @return new_rating, Matriz de treino corrigida, sem ruído.
 """
-def noise_rsvd(rating_train, threshold=1):
+def noise_rsvd(rating_train, threshold=1, possible_noise=None, threshold_vec=None, user_based_pv=True):
 
 	P,Q = load_model()
 
@@ -412,9 +413,31 @@ def noise_rsvd(rating_train, threshold=1):
 			if rating_train[l,c] != 0.0:
 				valid += 1
 				new_rating[l,c] = rating_train[l,c]
-				if abs(rating_train[l,c] - pred[l,c]) > threshold:
-					noise += 1
-					new_rating[l,c] = pred[l,c]
+
+				if possible_noise is None:
+					if abs(rating_train[l,c] - pred[l,c]) > threshold:
+						noise += 1
+						new_rating[l,c] = pred[l,c]
+
+						pass
+					pass
+
+				elif possible_noise[l, c] == True:
+
+					if user_based_pv:
+						if abs(rating_train[l,c] - pred[l,c]) > threshold_vec[l]:
+							noise += 1
+							new_rating[l,c] = pred[l,c]
+
+					else:
+						if abs(rating_train[l,c] - pred[l,c]) > threshold_vec[c]:
+							noise += 1
+							new_rating[l,c] = pred[l,c]
+
+					pass
+				pass
+			pass
+		pass
 	###########################################################################################
 
 	print("Valid cases: ", valid)
@@ -574,7 +597,7 @@ if __name__ == '__main__':
 
 	I, rating_train, rating_test = create_dataset(0, 5)
 
-	classify_possible_noise(rating_train)
+	possible_noise, threshold = classify_possible_noise(rating_train)
 
 	########## TESTANDO IDENTIFICAÇÃO DE RUÍDO ##########
 	# noise_detection(rating_train)						#
@@ -592,7 +615,13 @@ if __name__ == '__main__':
 	# print("------------------------------")			#
 	#####################################################
 
+	############# TESTANDO REMOÇÃO DE RUÍDO #############
+	print("Operações para remover ruido:")			#
+	new_rating = noise_rsvd(rating_train, possible_noise=possible_noise, threshold_vec=threshold)				#
+	print("------------------------------")			#
+	#####################################################
+
 	######## TESTANDO RSVD COM REMOÇÃO DE RUÍDO #########
-	# print("Resultado SVD após tirar ruido:")			#
-	# rsvd(I, new_rating, rating_test)					#
+	print("Resultado SVD após tirar ruido:")			#
+	rsvd(I, new_rating, rating_test)					#
 	#####################################################
