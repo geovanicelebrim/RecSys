@@ -32,7 +32,7 @@ Dados os conjuntos de dados, gera os dados de treino e teste necessários para o
 @return dados_teste Dados do conjunto de teste
 """
 
-def crete_dataset(parte, divisoes):
+def create_dataset(parte, divisoes):
 	path_users = './ml-100k/u.user'
 	path_items = './ml-100k/u.item'
 	path_data = './ml-100k/u.data'
@@ -427,7 +427,7 @@ def generate_noise(rating_train, nNoise):
 
 if __name__ == '__main__':
 
-	I, rating_train, rating_test = crete_dataset(0, 5)
+	I, rating_train, rating_test = create_dataset(0, 5)
 
 	########## TESTANDO IDENTIFICAÇÃO DE RUÍDO ##########
 	# noise_detection(rating_train)						#
