@@ -94,6 +94,26 @@ def calc_errors(I,rating,P,Q):
  	mae = np.sum(abs(matrix))/n_valid
  	return (rmse,mae)
 
+"""
+Realiza o cálculo do erro RMSE e o MAE
+
+@param I Matriz de valores que é possível prever
+@param rating Matriz com o gabarito
+@param prediction matriz de predição
+
+@return rmse Cálculo do RMSE para o conjunto de dados
+@return mae Cálculo do MAE para o conjunto de dados
+"""
+def errors(I,rating,prediction):
+ 	matrix = (I * (rating - prediction))
+ 	n_valid = len((rating[rating>0]))
+ 	
+ 	#Calcula RMSE
+ 	rmse = np.sqrt(np.sum(matrix**2)/n_valid)
+ 	#Calcula MAE
+ 	mae = np.sum(abs(matrix))/n_valid
+ 	return (rmse,mae)
+
 
 """
 Ajusta o modelo e mostra, para cada época, os erros obtidos 
@@ -114,19 +134,16 @@ com os dados de teste
 def rsvd(I, rating_train, rating_test, filename='./tests/test_progress.csv', lamb=0.11, k=10, max_iteration=250, lrate=0.005, delta=0.0001):
 	n_users, n_items = rating_train.shape
 
+	################## PARA AGILIZAR O PROCESSO DO ALGORITMO O MODELO PODE SER CARREGADO DO ARQUIVO USANDO 'load_model() ###################
 	P = np.random.rand(k,n_users)
 	Q = np.random.rand(k,n_items)
 	# P,Q = load_model()
+	########################################################################################################################################
+	
 	users,items = rating_train.nonzero()
 
 	best_test_rmse = float('inf')
 	best_test_mae = float('inf')
-
-	# if delta == 0.0:
-	# I2 = rating_train.copy()
-	# I2[I2 > 0] = 1
-	# output = open(filename, "w")
-	# output.write("iteration,rmse_train,rmse_test,mae_train,mae_test\n")
 
 	old_rmse = float('inf')
 	test_rmse = 999
@@ -144,16 +161,23 @@ def rsvd(I, rating_train, rating_test, filename='./tests/test_progress.csv', lam
 			P[:,u] += lrate * ( e * Q[:,i] - lamb * P[:,u])
 			Q[:,i] += lrate * ( e * P[:,u] - lamb * Q[:,i])
 		test_rmse, test_mae = calc_errors(I,rating_test,P,Q)
-		# train_rmse, train_mae = calc_errors(I2,rating_train,P,Q)
 
-
+	############ PARA ESCREVER O MODELO NO ARQUIVO, DESCOMENTE A LINHA ABAIXO #############
 	# write_model(P, Q)
+	#######################################################################################
 	print("")
-	# print(train_mae, train_rmse)
 	
 	elapsed = time.time() - start
 	return(iteration, best_test_rmse, best_test_mae, elapsed)
 
+
+"""
+Escreve um modelo de predição obtido com o RSVD em um arquivo, para que 
+este possa ser rápidamente reutilizado.
+
+@param P matriz de variáveis latentes do usuário
+@param Q matriz de variáveis latentes do item
+"""
 def write_model(P, Q):
 	file = open("model_Q", "w")
 
@@ -180,6 +204,13 @@ def write_model(P, Q):
 	file.close()
 	pass
 
+
+"""
+Carrega um modelo de predição obtido com o RSVD de um arquivo
+
+@return P, Matriz de variáveis latentes do usuário
+@return Q, Matriz de variáveis latentes do item
+"""
 def load_model():
 	file = open("model_Q", "r")
 	lines = file.readlines()
@@ -201,66 +232,104 @@ def load_model():
 
 	return (P,Q)
 
-def noise_rsvd(rating_train):
+
+"""
+Uma vez realizada a predição normalmente usando apenas o RSVD e escrevendo
+no arquivo o modelo de predição obtido, esta função utiliza o modelo
+construído para detectar ruídos presentes na base de TREINO, considerando
+um threshold. Além de detectar, esses valores são corrigidos pelo valor 
+da predição.
+
+@param rating_train, Matriz de treino que será corrigida
+@param threshold, Limiar de diferença não normalizada entre as notas
+[1 <= threshold <= 5]
+
+@return new_rating, Matriz de treino corrigida, sem ruído.
+"""
+def noise_rsvd(rating_train, threshold=1):
 
 	P,Q = load_model()
 
-	###### CALCULA OS ERROS #######
-	I2 = rating_train.copy()
-	I2[I2 > 0] = 1
-
-	rating = rating_train
-	new_rating = np.zeros(rating.shape)
+	###### OBTEM OS VALORES VÁLIDOS DA BASE DE DADOS #######
+	I = rating_train.copy()
+	I[I > 0] = 1
+	########################################################
+	
+	new_rating = np.zeros(rating_train.shape)
 	pred = prediction(P,Q)
 
 	noise = 0
 	valid = 0
 
-	for l in range(rating.shape[0]):
-		for c in range(rating.shape[1]):
-			if rating[l,c] != 0.0:
+	####### COMPARA A MATRIZ ORIGINAL DE TREINO COM A SUA PREDIÇÃO E IDENTIFICA O RUÍDO #######
+	for l in range(rating_train.shape[0]):
+		for c in range(rating_train.shape[1]):
+			if rating_train[l,c] != 0.0:
 				valid += 1
-				new_rating[l,c] = rating[l,c]
-				if abs(rating[l,c] - pred[l,c]) > 2:
+				new_rating[l,c] = rating_train[l,c]
+				if abs(rating_train[l,c] - pred[l,c]) > threshold:
 					noise += 1
 					new_rating[l,c] = pred[l,c]
+	###########################################################################################
 
-	print("Valid: ", valid)
-	print("Noise: ", noise)
-	n_valid = len((rating[rating>0]))
+	print("Valid cases: ", valid)
+	print("Noise decected: ", noise)
 	
-	matrix = (I2 * (rating - prediction(P,Q)))
-	#Calcula RMSE
-	rmse = np.sqrt(np.sum(matrix**2)/n_valid)
-	#Calcula MAE
-	mae = np.sum(abs(matrix))/n_valid
+	old_mae, old_rmse = errors(I,rating_train,pred)
+	print("Old train MAE: ", old_mae, "\tOld train RMSE: ", old_rmse)
 
-	print(mae, rmse)
+	new_mae, new_rmse = calc_errors(I, new_rating, P, Q)
+	print("New train MAE: ", new_mae, "\tNew train RMSE: ", new_rmse)
+
 	return new_rating
 
-def noise_detection(rating_train):
-	
-	index_original_noise, train = generate_noise(rating_train)
 
+"""
+Considerando que existe um modelo no arquivo (lembrando que para cada base
+existe um modelo que melhor se adequa, portanto, os testes devem ser feitos
+com modelos de uma mesma base.), esta função, a partir de uma base, constroi
+uma nova base com um determinado valor de ruído. Após isso, seu objetivo é
+submeter a base ao modelo com a finalidade de obter a acurácia da detecção 
+do ruído gerado.
+
+Ao final, é apresentado uma matriz de confusão com os resultados alcansados.
+
+@param rating_train, base de treino original
+@param nNoise, número de dados que serão afetados pelo ruído
+@param threshold, Limiar de diferença não normalizada entre as notas
+[1 <= threshold <= 5]
+"""
+def noise_detection(rating_train, nNoise=1000, threshold=3):
+	#### OBTÉM UMA NOVA BASE PERTURBADA E UMA MATRIZ COM OS INDICES QUE FORAM PERTURBADOS ####
+	index_original_noise, train = generate_noise(rating_train, nNoise)
+	#### MATRIZ DE INDICES QUE O MODELO ACREDITA QUE FOI OU NÃO PERTURBADO ####
 	index_predicted_noise = np.full((rating_train.shape), -1, dtype=int)
 
 	P,Q = load_model()
 
-	###### CALCULA OS ERROS #######
-	rating = train
 	pred = prediction(P,Q)
 
-	for l in range(rating.shape[0]):
-		for c in range(rating.shape[1]):
-			if rating[l,c] != 0.0:
-				if abs(rating[l,c] - pred[l,c]) > 1:
+	##### COMPARA O TREINO (BASE PERTURBADA) COM A PREDIÇÃO PARA DETERMINAR O QUE É RUÍDO ####
+	for l in range(train.shape[0]):
+		for c in range(train.shape[1]):
+			if train[l,c] != 0.0:
+				if abs(train[l,c] - pred[l,c]) > threshold:
 					index_predicted_noise[l,c] = 1
 				else:
 					index_predicted_noise[l,c] = 0
+	##########################################################################################
 
+	#### COMPARA OS INDICES ONDE O MODELO ENCONTROU RUÍDO COM O GABARITO ####
 	confusion(index_original_noise, index_predicted_noise)
-	
 
+
+"""
+Apresenta a matriz de confusão obtida na avaliação da detecção de ruído
+
+@param original, idices que realmente foram perturbados
+@param predicted, indices que o modelo encontrou ruido
+
+"""
 def confusion(original, predicted):
 	true_noise = 0
 	false_noise = 0
@@ -285,27 +354,56 @@ def confusion(original, predicted):
 
 	pass
 
-# if value = -1, this prediction is not valide
-# if value = 0, this prediction not contains noise
-# if value = 1, this prediction contains noise
-def generate_noise(rating_train, nNoise=1000):
 
+"""
+Gera ruído em uma base de treino
+O critério para gerar ruído é:
+Se rating < 3
+rand(3, 5)
+Se rating > 3
+rand(1, 3)
+Se rating = 3
+rand(valor diferente de 3)
+
+A matriz de indices perturbados contém a seguinte característica:
+Se valor = -1, o indice é não válido
+Se valor = 0, a predição não contém ruído
+Se valor = 1, a predição contains ruído
+
+@param rating_train, matriz de treino original
+@param nNoise, número de ratings que serão perturbados
+
+@return index_noise, matriz com os indices que foram perturbados
+@return new_train, nova matriz gerada a partir da perturbação da batriz de treino
+"""
+
+def generate_noise(rating_train, nNoise):
+	#### INICIALIZA A MATRIZ DE INDICES COM -1 ####
 	index_noise = np.full((rating_train.shape), -1, dtype=int)
+	#### INDICES QUE SÃO VÁLIDOS SÃO ALTERADOS PARA 0 ####
 	index_noise[rating_train > 0.0] = 0
 
+	#### CONSTROI DICIONÁRIO DE INDICES QUE PODEM SER PERTURBADOS ####
 	valid_index = {}
 	count = 0;
+	
 	for l in range(rating_train.shape[0]):
 		for c in range(rating_train.shape[1]):
 			if rating_train[l,c] > 0.0:
 				valid_index[count] = l,c
 				count += 1
+	##################################################################
 
 	if nNoise > len(valid_index):
 		print("Impossivel gerar essa quantidade de ruido.")
 		exit(1)
 
+	#### NOVA MATRIZ DE TREINO QUE SERÁ PERTURBADA ####
 	new_train = rating_train.copy()
+
+	##### PARA CADA RUÍDO QUE PRECISA SE GERADO, É SORTEADO UM RUÍDO VÁLIDO.  #####
+	##### SE ESTE INDICE AINDA NÃO POSSUIR RUÍDO, SEU VALOR É PERTURBADO E    #####
+	##### A MATRIZ QUE GUARDA OS INDICES DOS VALORES PERTURBADOS, ATUALIZADA. #####
 	for x in range(nNoise):
 		i = randint(0,len(valid_index) - 1)
 		while index_noise[valid_index[i][0], valid_index[i][1]] == 1:
@@ -322,35 +420,32 @@ def generate_noise(rating_train, nNoise=1000):
 			while gNoise == 3:
 				gNoise = float(randint(1,5))
 			new_train[valid_index[i][0], valid_index[i][1]] = gNoise
+	###############################################################################
 
 	return (index_noise, new_train)
 
 
-"""
-Melhores parametros:
-lamb = 0.11
-k = 10
-lrate = 0.0066
-"""
 if __name__ == '__main__':
 
 	I, rating_train, rating_test = crete_dataset(0, 5)
 
-	noise_detection(rating_train)
-	# index, train = generate_noise(rating_train, 10)
+	########## TESTANDO IDENTIFICAÇÃO DE RUÍDO ##########
+	# noise_detection(rating_train)						#
+	#####################################################
+	
+	########### TESTANDO RSVD SEM TIRAR RUÍDO ###########
+	# print("Resultado SVD sem tirar ruido:")			#
+	# rsvd(I, rating_train, rating_test)				#
+	# print("------------------------------")			#
+	#####################################################
 
-	# for l in range(index.shape[0]):
-	# 	for c in range(index.shape[1]):
-	# 		if index[l,c] == 1:
-	# 			print("Before: ", rating_train[l,c], "\tAfter: ", train[l,c])
+	############# TESTANDO REMOÇÃO DE RUÍDO #############
+	# print("Operações para remover ruido:")			#
+	# new_rating = noise_rsvd(rating_train)				#
+	# print("------------------------------")			#
+	#####################################################
 
-	# print("Resultado SVD sem tirar ruido:")
-	# rsvd(I, rating_train, rating_test)
-	# print("------------------------------")
-	# print("Operações para remover ruido:")
-	# new_rating = noise_rsvd(rating_train)
-
-	# noise_rsvd(new_rating)
-	# print("------------------------------")
-	# print("Resultado SVD após tirar ruido:")
-	# rsvd(I, new_rating, rating_test)
+	######## TESTANDO RSVD COM REMOÇÃO DE RUÍDO #########
+	# print("Resultado SVD após tirar ruido:")			#
+	# rsvd(I, new_rating, rating_test)					#
+	#####################################################
