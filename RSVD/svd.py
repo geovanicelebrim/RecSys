@@ -474,7 +474,7 @@ Ao final, é apresentado uma matriz de confusão com os resultados alcansados.
 @param threshold, Limiar de diferença não normalizada entre as notas
 [1 <= threshold <= 5]
 """
-def noise_detection(rating_train, nNoise=1000, threshold=3):
+def noise_detection(rating_train, nNoise=1000, threshold=3, possible_noise=None, threshold_vec=None, user_based_pv=True):
 	#### OBTÉM UMA NOVA BASE PERTURBADA E UMA MATRIZ COM OS INDICES QUE FORAM PERTURBADOS ####
 	index_original_noise, train = generate_noise(rating_train, nNoise)
 	#### MATRIZ DE INDICES QUE O MODELO ACREDITA QUE FOI OU NÃO PERTURBADO ####
@@ -488,10 +488,26 @@ def noise_detection(rating_train, nNoise=1000, threshold=3):
 	for l in range(train.shape[0]):
 		for c in range(train.shape[1]):
 			if train[l,c] != 0.0:
-				if abs(train[l,c] - pred[l,c]) > threshold:
-					index_predicted_noise[l,c] = 1
-				else:
+				if possible_noise is None:
+					if abs(train[l,c] - pred[l,c]) > threshold:
+						index_predicted_noise[l,c] = 1
+					else:
+						index_predicted_noise[l,c] = 0
+
+				elif possible_noise[l, c] == True:
+
 					index_predicted_noise[l,c] = 0
+
+					if user_based_pv:
+						if abs(train[l,c] - pred[l,c]) > threshold_vec[l]:
+							index_predicted_noise[l,c] = 1
+
+					else:
+						if abs(train[l,c] - pred[l,c]) > threshold_vec[c]:
+							index_predicted_noise[l,c] = 1
+
+					pass
+				pass
 	##########################################################################################
 
 	#### COMPARA OS INDICES ONDE O MODELO ENCONTROU RUÍDO COM O GABARITO ####
@@ -616,6 +632,15 @@ if __name__ == '__main__':
 	output_4 = open("./tests/test_mahony_detect_generate_noise_rsvd.csv", "w")
 	output_4.write("iteration,threshold,noise,true_positive,false_positive,true_negative,false_negative\n")
 
+	output_5 = open("./tests/test_toledo_rsvd.csv", "w")
+	output_5.write("iteration,rmse,mae,elapsed\n")
+
+	output_6 = open("./tests/test_toledo_detect_natural_noise_rsvd.csv", "w")
+	output_6.write("iteration,true_positive,false_positive,true_negative,false_negative\n")
+
+	output_7 = open("./tests/test_toledo_detect_generate_noise_rsvd.csv", "w")
+	output_7.write("iteration,noise,true_positive,false_positive,true_negative,false_negative\n")
+
 
 	for i in range(divisoes):
 		print("Calculando para a parte", i)
@@ -624,63 +649,85 @@ if __name__ == '__main__':
 
 		
 		############################# TESTANDO RSVD SEM TIRAR RUÍDO #############################
-		print("Testando RSVD sem tirar ruido:")                                               #
-		iteration, rmse, mae, elapsed = rsvd(I, rating_train, rating_test, persist=True)      #
-		output_1.write("%d, %.4f, %.4f, %.4f\n" % (i, rmse, mae, elapsed))                    #
-		output_1.flush()                                                                      #
-		print("-------------------------------------------")                                  #
+		# print("Testando RSVD sem tirar ruido:")                                               #
+		# iteration, rmse, mae, elapsed = rsvd(I, rating_train, rating_test, persist=True)      #
+		# output_1.write("%d, %.4f, %.4f, %.4f\n" % (i, rmse, mae, elapsed))                    #
+		# output_1.flush()                                                                      #
+		# print("-------------------------------------------")                                  #
 		#########################################################################################
 		
 
 		###### TESTANDO RSVD COM REMOÇÃO DE RUÍDO USANDO MAHONY E VARIAÇÃO DO THRASHOLD #######
-		for threshold in range(1,5):                                                          #
-			print("Testando a remoção de ruido com Mahony com threshold: ", threshold)        #
-			new_rating = noise_rsvd(rating_train, threshold=threshold)                        #
-			iteration, rmse, mae, elapsed = rsvd(I, new_rating, rating_test, persist=None)    #
-			output_2.write("%d, %d, %.4f, %.4f, %.4f\n" % (i, threshold, rmse, mae, elapsed)) #
-			output_2.flush()                                                                  #
-			print("-------------------------------------------")                              #
+		# for threshold in range(1,5):                                                          #
+		# 	print("Testando a remoção de ruido com Mahony com threshold: ", threshold)        #
+		# 	new_rating = noise_rsvd(rating_train, threshold=threshold)                        #
+		# 	iteration, rmse, mae, elapsed = rsvd(I, new_rating, rating_test, persist=None)    #
+		# 	output_2.write("%d, %d, %.4f, %.4f, %.4f\n" % (i, threshold, rmse, mae, elapsed)) #
+		# 	output_2.flush()                                                                  #
+		# 	print("-------------------------------------------")                              #
 		#########################################################################################
 
 
 		################################ TESTANDO DETECÇÃO DE RUÍDO NATURAL COM MAHONY VARIANDO O THRASHOLD #################################
-		print("Testando a detecção de ruído natural variando o threshold:")                                                               #
-		for threshold in range(1,5):                                                                                                      #
-			true_positive, false_positive, true_negative, false_negative = noise_detection(rating_train, nNoise=0, threshold=threshold)   #
-			output_3.write("%d, %d, %d, %d, %d, %d\n" % (i, threshold, true_positive, false_positive, true_negative, false_negative))     #
-			output_3.flush()                                                                                                              #
+		# print("Testando a detecção de ruído natural variando o threshold:")                                                               #
+		# for threshold in range(1,5):                                                                                                      #
+		# 	true_positive, false_positive, true_negative, false_negative = noise_detection(rating_train, nNoise=0, threshold=threshold)   #
+		# 	output_3.write("%d, %d, %d, %d, %d, %d\n" % (i, threshold, true_positive, false_positive, true_negative, false_negative))     #
+		# 	output_3.flush()                                                                                                              #
 		#####################################################################################################################################
 
 
 		###################################### TESTANDO DETECÇÃO DE RUÍDO GERADO COM MAHONY VARIANDO O THRASHOLD #######################################
-		for threshold in range(1,5):                                                                                                                 #
-			for noise in range(8000,40001, 8000):                                                                                                    #
-				new_rating = noise_rsvd(rating_train, threshold=threshold)                                                                           #
-				true_positive, false_positive, true_negative, false_negative = noise_detection(new_rating, nNoise=noise, threshold=threshold)        #
-				output_4.write("%d, %d, %d, %d, %d, %d, %d\n" % (i, threshold, noise, true_positive, false_positive, true_negative, false_negative)) #
-				output_4.flush()                                                                                                                     #
+		# for threshold in range(1,5):                                                                                                                 #
+		# 	for noise in range(8000,40001, 8000):                                                                                                    #
+		# 		new_rating = noise_rsvd(rating_train, threshold=threshold)                                                                           #
+		# 		true_positive, false_positive, true_negative, false_negative = noise_detection(new_rating, nNoise=noise, threshold=threshold)        #
+		# 		output_4.write("%d, %d, %d, %d, %d, %d, %d\n" % (i, threshold, noise, true_positive, false_positive, true_negative, false_negative)) #
+		# 		output_4.flush()                                                                                                                     #
 		################################################################################################################################################
+
+
+		#======================================================================= TOLEDO ===============================================================#
+
+		######################## TESTANDO RSVD COM REMOÇÃO DE RUÍDO USANDO TOLEDO E VARIAÇÃO DO THRASHOLD ########################
+		print("Testando a remoção de ruido com Toledo.")                                                                       #
+		possible_noise, threshold_vec, count_pn = classify_possible_noise(rating_train, user_based_threshold=True)             #
+		new_rating = noise_rsvd(rating_train, possible_noise=possible_noise, threshold_vec=threshold_vec, user_based_pv=True)  #
+		iteration, rmse, mae, elapsed = rsvd(I, new_rating, rating_test, persist=True)                                         #
+		output_5.write("%d, %.4f, %.4f, %.4f\n" % (i, rmse, mae, elapsed))                                                     #
+		output_5.flush()                                                                                                       #
+		print("-------------------------------------------")                                                                   #
+		##########################################################################################################################
+
+
+		################################ TESTANDO DETECÇÃO DE RUÍDO NATURAL COM TOLEDO VARIANDO O THRASHOLD #################################
+		print("Testando a detecção de ruído natural variando o threshold:")                                                               #
+		possible_noise, threshold_vec, count_pn = classify_possible_noise(rating_train, user_based_threshold=True)                        #
+		true_positive, false_positive, true_negative, false_negative = noise_detection(rating_train, nNoise=0,                            #
+																			possible_noise=possible_noise, threshold_vec=threshold_vec,   #
+																			user_based_pv=True)                                           #
+		output_6.write("%d, %d, %d, %d, %d, %d\n" % (i, true_positive, false_positive, true_negative, false_negative))                    #
+		output_6.flush()                                                                                                                  #
+		print("-------------------------------------------")                                                                              #
+		#####################################################################################################################################
+
+
+		################################# TESTANDO DETECÇÃO DE RUÍDO GERADO COM TOLEDO VARIANDO O THRASHOLD #################################
+		possible_noise, threshold_vec, count_pn = classify_possible_noise(rating_train, user_based_threshold=True)                        #
+		new_rating = noise_rsvd(rating_train, possible_noise=possible_noise, threshold_vec=threshold_vec, user_based_pv=True)             #
+		for noise in range(8000,40001, 8000):                                                                                             #
+			true_positive, false_positive, true_negative, false_negative = noise_detection(new_rating, nNoise=noise,                      #
+																			possible_noise=possible_noise, threshold_vec=threshold_vec,   #
+																			user_based_pv=True)                                           #
+			output_7.write("%d, %d, %d, %d, %d, %d\n" % (i, noise, true_positive, false_positive, true_negative, false_negative))         #
+			output_7.flush()                                                                                                              #
+		#####################################################################################################################################
+
 
 	output_1.close()
 	output_2.close()
 	output_3.close()
 	output_4.close()
-
-
-
-	# I, rating_train, rating_test = create_dataset(0, 5)
-
-	# index_noise, new_train = generate_noise(rating_train, 285)
-
-	# # possible_noise, threshold = classify_possible_noise(rating_train)
-	# possible_noise, threshold, count_pn = classify_possible_noise(new_train)
-	# print("Possíveis ruídos:", count_pn)			#
-
-
-	# ############# TESTANDO REMOÇÃO DE RUÍDO #############
-	# print("Operações para remover ruido:")			#
-	# # new_rating = noise_rsvd(rating_train, possible_noise=possible_noise, threshold_vec=threshold)				#
-	# new_rating = noise_rsvd(new_train, possible_noise=possible_noise, threshold_vec=threshold)				#
-	# print("------------------------------")			#
-
-	
+	output_5.close()
+	output_6.close()
+	output_7.close()
