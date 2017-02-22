@@ -654,7 +654,7 @@ if __name__ == '__main__':
 
 		###################################### TESTANDO DETECÇÃO DE RUÍDO GERADO COM MAHONY VARIANDO O THRASHOLD #######################################
 		for threshold in range(1,5):                                                                                                                 #
-			for noise in range(800,40001, 800):                                                                                                      #
+			for noise in range(8000,40001, 8000):                                                                                                    #
 				new_rating = noise_rsvd(rating_train, threshold=threshold)                                                                           #
 				true_positive, false_positive, true_negative, false_negative = noise_detection(new_rating, nNoise=noise, threshold=threshold)        #
 				output_4.write("%d, %d, %d, %d, %d, %d, %d\n" % (i, threshold, noise, true_positive, false_positive, true_negative, false_negative)) #
