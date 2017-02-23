@@ -620,17 +620,17 @@ if __name__ == '__main__':
 
 	divisoes = 5
 
-	output_1 = open("./tests/test_normal_rsvd.csv", "w")
-	output_1.write("iteration,rmse,mae,elapsed\n")
+	#output_1 = open("./tests/test_normal_rsvd.csv", "w")
+	#output_1.write("iteration,rmse,mae,elapsed\n")
 
-	output_2 = open("./tests/test_mahony_rsvd.csv", "w")
-	output_2.write("iteration,threshold,rmse,mae,elapsed\n")
+	#output_2 = open("./tests/test_mahony_rsvd.csv", "w")
+	#output_2.write("iteration,threshold,rmse,mae,elapsed\n")
 
-	output_3 = open("./tests/test_mahony_detect_natural_noise_rsvd.csv", "w")
-	output_3.write("iteration,threshold,true_positive,false_positive,true_negative,false_negative\n")
+	#output_3 = open("./tests/test_mahony_detect_natural_noise_rsvd.csv", "w")
+	#output_3.write("iteration,threshold,true_positive,false_positive,true_negative,false_negative\n")
 
-	output_4 = open("./tests/test_mahony_detect_generate_noise_rsvd.csv", "w")
-	output_4.write("iteration,threshold,noise,true_positive,false_positive,true_negative,false_negative\n")
+	#output_4 = open("./tests/test_mahony_detect_generate_noise_rsvd.csv", "w")
+	#output_4.write("iteration,threshold,noise,true_positive,false_positive,true_negative,false_negative\n")
 
 	output_5 = open("./tests/test_toledo_rsvd.csv", "w")
 	output_5.write("iteration,rmse,mae,elapsed\n")
@@ -706,7 +706,7 @@ if __name__ == '__main__':
 		true_positive, false_positive, true_negative, false_negative = noise_detection(rating_train, nNoise=0,                            #
 																			possible_noise=possible_noise, threshold_vec=threshold_vec,   #
 																			user_based_pv=True)                                           #
-		output_6.write("%d, %d, %d, %d, %d, %d\n" % (i, true_positive, false_positive, true_negative, false_negative))                    #
+		output_6.write("%d, %d, %d, %d, %d\n" % (i, true_positive, false_positive, true_negative, false_negative))                    #
 		output_6.flush()                                                                                                                  #
 		print("-------------------------------------------")                                                                              #
 		#####################################################################################################################################
@@ -724,10 +724,10 @@ if __name__ == '__main__':
 		#####################################################################################################################################
 
 
-	output_1.close()
-	output_2.close()
-	output_3.close()
-	output_4.close()
+	#output_1.close()
+	#output_2.close()
+	#output_3.close()
+	#output_4.close()
 	output_5.close()
 	output_6.close()
 	output_7.close()
