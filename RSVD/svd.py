@@ -641,8 +641,11 @@ if __name__ == '__main__':
 	# output_7 = open("./tests/test_toledo_detect_generate_noise_rsvd.csv", "w")
 	# output_7.write("iteration,noise,true_positive,false_positive,true_negative,false_negative\n")
 
-	output_8 = open("./tests/test_toledo_detect_recursive_noise_rsvd.csv", "w")
-	output_8.write("iteration,repeat,true_positive,false_positive,true_negative,false_negative,rmse,mae,elapsed\n")
+	# output_8 = open("./tests/test_toledo_detect_recursive_noise_rsvd.csv", "w")
+	# output_8.write("iteration,repeat,true_positive,false_positive,true_negative,false_negative,rmse,mae,elapsed\n")
+
+	output_9 = open("./tests/test_toledo_detect_recursive_generated_noise_rsvd.csv", "w")
+	output_9.write("iteration,repeat,generated_noise,count_noise\n")
 
 	for i in range(divisoes):
 		print("Calculando para a parte", i)
@@ -726,28 +729,74 @@ if __name__ == '__main__':
 		#####################################################################################################################################
 
 
-		########################################## TESTANDO MULTIPLA REMOÇÃO DE RUÍDO GERADO COM TOLEDO #####################################
-		print("Testando multipla remoção de ruído com Toledo para a base: ", i)
+		########################################## TESTANDO MULTIPLA REMOÇÃO DE RUÍDO COM TOLEDO ############################################
+		# print("Testando multipla remoção de ruído com Toledo para a base: ", i)
+		
+		# train = rating_train.copy()
+
+		# for repeat in range(0,5):
+		# 	print("Rodando para a repetição: ", repeat)
+		# 	# Identifica possiveis ruídos
+		# 	possible_noise, threshold_vec, count_pn = classify_possible_noise(train, user_based_threshold=True)
+		# 	# Obtém estatísticas da detecção de ruídos
+		# 	true_positive, false_positive, true_negative, false_negative = noise_detection(train, nNoise=0, possible_noise=possible_noise, 
+		# 																	threshold_vec=threshold_vec, user_based_pv=True)
+		# 	# Corrige os ruídos encontrados
+		# 	new_rating = noise_rsvd(train, possible_noise=possible_noise, threshold_vec=threshold_vec, user_based_pv=True)
+		# 	# Roda o RSVD para obter os resultados para esta correção
+		# 	iteration, rmse, mae, elapsed = rsvd(I, new_rating, rating_test, persist=None)
+		# 	# Atualiza a base de treino para a base corrigida
+		# 	train = new_rating.copy()
+
+		# 	output_8.write("%d, %d, %d, %d, %d, %d, %.4f, %.4f, %.4f\n" % (i, repeat, true_positive, false_positive, true_negative, false_negative, rmse, mae, elapsed))
+		# 	output_8.flush()
+		#####################################################################################################################################
+
+
+		#################################### TESTANDO MULTIPLA REMOÇÃO DE RUÍDO COM TOLEDO E SEU IMACTO #####################################
+		print("Testando multipla remoção de ruído com Toledo (obtendo variação) para a base: ", i)
 		
 		train = rating_train.copy()
+
+		noise_matrix_old = np.zeros(train.shape)
+		noise_matrix_current = np.zeros(train.shape)
 
 		for repeat in range(0,5):
 			print("Rodando para a repetição: ", repeat)
 			# Identifica possiveis ruídos
 			possible_noise, threshold_vec, count_pn = classify_possible_noise(train, user_based_threshold=True)
-			# Obtém estatísticas da detecção de ruídos
-			true_positive, false_positive, true_negative, false_negative = noise_detection(train, nNoise=0, possible_noise=possible_noise, 
-																			threshold_vec=threshold_vec, user_based_pv=True)
 			# Corrige os ruídos encontrados
 			new_rating = noise_rsvd(train, possible_noise=possible_noise, threshold_vec=threshold_vec, user_based_pv=True)
-			# Roda o RSVD para obter os resultados para esta correção
-			iteration, rmse, mae, elapsed = rsvd(I, new_rating, rating_test, persist=None)
+			
+			generated_noise = 0
+			count_noise = 0
+
+			if repeat == 0:
+				for l in range(train.shape[0]):
+					for c in range(train.shape[1]):
+						if train[l][c] != new_rating[l][c]:
+							noise_matrix_old[l][c] = 1
+							count_noise += 1
+			else:
+				noise_matrix_current = np.zeros(train.shape)
+				for l in range(train.shape[0]):
+					for c in range(train.shape[1]):
+						if train[l][c] != new_rating[l][c] and noise_matrix_old[l][c] != 1:
+							generated_noise += 1
+						if train[l][c] != new_rating[l][c]:
+							noise_matrix_current[l][c] = 1
+							count_noise += 1
+
+				noise_matrix_old = noise_matrix_current.copy()
+
+
 			# Atualiza a base de treino para a base corrigida
 			train = new_rating.copy()
 
-			output_8.write("%d, %d, %d, %d, %d, %d, %.4f, %.4f, %.4f\n" % (i, repeat, true_positive, false_positive, true_negative, false_negative, rmse, mae, elapsed))
-			output_8.flush()
+			output_9.write("%d, %d, %d, %d\n" % (i, repeat, generated_noise, count_noise))
+			output_9.flush()
 		#####################################################################################################################################
+	
 	# output_1.close()
 	# output_2.close()
 	# output_3.close()
@@ -755,4 +804,5 @@ if __name__ == '__main__':
 	# output_5.close()
 	# output_6.close()
 	# output_7.close()
-	output_8.close()
+	# output_8.close()
+	output_9.close()
