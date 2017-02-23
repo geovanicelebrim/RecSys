@@ -741,7 +741,7 @@ if __name__ == '__main__':
 			# Corrige os ruídos encontrados
 			new_rating = noise_rsvd(train, possible_noise=possible_noise, threshold_vec=threshold_vec, user_based_pv=True)
 			# Roda o RSVD para obter os resultados para esta correção
-			iteration, rmse, mae, elapsed = rsvd(I, new_rating, rating_test, persist=None, max_iteration=1)
+			iteration, rmse, mae, elapsed = rsvd(I, new_rating, rating_test, persist=None)
 			# Atualiza a base de treino para a base corrigida
 			train = new_rating.copy()
 
