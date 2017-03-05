@@ -6,7 +6,7 @@ Este trabalho tem como objetivo implementar os algoritmos de filtragem colaborat
 
 ## Implementação e análise de detecção de ruído dos algoritmos de Toledo e Mahony
 
-Este trabalho objetiva-se a analisar o impacto de ruídos nas predições que utilizam filtragem colaborativa. Sendo analizado tanto a qualidade das predições após a correção de ruídos, quando a performance dos algoritmos na detecção de ruídos gerados. 
+Este trabalho objetiva-se a analisar o impacto de ruídos nas predições que utilizam filtragem colaborativa. Sendo analisado tanto a qualidade das predições após a correção de ruídos, quando a performance dos algoritmos na detecção de ruídos gerados. 
 
 Os códigos desenvolvidos, bem como os artigo disponibilizados abaixo detalham melhor trabalho, apresentando a metodologia aplicada e os resultados alcansados.
 
