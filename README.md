@@ -1,10 +1,10 @@
 # Sistemas de Recomendação
 
-# Implementação e análise de desempenho dos algoritmos kNN e RSVD
+## Implementação e análise de desempenho dos algoritmos kNN e RSVD
 
 Este trabalho tem como objetivo implementar os algoritmos de filtragem colaborativa kNN e RSVD, e submetê-los a testes de parâmetros, buscando encontrar qual é a melhor configuração de parâmetros para a base de dados do MovieLens disponível neste [link](http://grouplens.org/datasets/movielens/100k/).
 
-# Implementação e análise de detecção de ruído dos algoritmos de Toledo e Mahony
+## Implementação e análise de detecção de ruído dos algoritmos de Toledo e Mahony
 
 Este trabalho objetiva-se a analisar o impacto de ruídos nas predições que utilizam filtragem colaborativa. Sendo analizado tanto a qualidade das predições após a correção de ruídos, quando a performance dos algoritmos na detecção de ruídos gerados. 
 
